@@ -1,13 +1,15 @@
 import numpy as np
 import os
+import scipy.sparse as sp
 
 
 def load_data(args):
     n_user, n_item, train_data, eval_data, test_data = load_rating(args)
-    n_entity, n_relation, adj_entity, adj_relation = load_kg(args)
+    # n_entity, n_relation, adj_entity, adj_relation = load_kg(args)
+    n_entity, n_relation, adj_entity, idx_nodes, kg = load_kg(args)
     print('data loaded.')
 
-    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, adj_relation
+    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes, kg
 
 
 def load_rating(args):
@@ -23,7 +25,7 @@ def load_rating(args):
 
     n_user = len(set(rating_np[:, 0]))
     n_item = len(set(rating_np[:, 1]))
-    train_data, eval_data, test_data = dataset_sxplit(rating_np, args)
+    train_data, eval_data, test_data = dataset_split(rating_np, args)
 
     return n_user, n_item, train_data, eval_data, test_data
 
@@ -64,43 +66,55 @@ def load_kg(args):
     n_entity = len(set(kg_np[:, 0]) | set(kg_np[:, 2]))
     n_relation = len(set(kg_np[:, 1]))
 
-    kg = construct_kg(kg_np)
-    adj_entity, adj_relation = construct_adj(args, kg, n_entity)
+    kg, edges, idx_nodes = construct_kg(kg_np)
+    # adj_entity, adj_relation = construct_adj(args, kg, edges, n_entity)
+    adj_entity = construct_adj_entity(edges, n_entity)
 
-    return n_entity, n_relation, adj_entity, adj_relation
+    return n_entity, n_relation, adj_entity, idx_nodes, kg  #, adj_relation
 
 
 def construct_kg(kg_np):
     print('constructing knowledge graph ...')
     kg = dict()
+    edges = []
+    idx_nodes = []
     for triple in kg_np:
         head = triple[0]
         relation = triple[1]
         tail = triple[2]
-        # treat the KG as an undirected graph
-        if head not in kg:
-            kg[head] = []
-        kg[head].append((tail, relation))
-        if tail not in kg:
-            kg[tail] = []
-        kg[tail].append((head, relation))
-    return kg
+        edges.append((head, relation, tail))
+        # # treat the KG as an undirected graph
+        # if head not in kg:
+        #     kg[head] = []
+        # kg[head].append((tail, relation))
+        # if tail not in kg:
+        #     kg[tail] = []
+        # kg[tail].append((head, relation))
+        key_a = str(head) + "_" + str(tail)
+        key_b = str(tail) + "_" + str(head)
+        if key_a not in kg:
+            kg[key_a] = []
+        kg[key_a].append(relation)
+        if key_b not in kg:
+            kg[key_b] = []
+        kg[key_b].append(relation)
+
+        if head not in idx_nodes:
+            idx_nodes.append(head)
+        if tail not in idx_nodes:
+            idx_nodes.append(tail)
+    edges = np.array(edges, dtype=np.int32)
+    return kg, edges, idx_nodes
 
 
-def construct_adj(args, kg, entity_num):
-    print('constructing adjacency matrix ...')
-    # each line of adj_entity stores the sampled neighbor entities for a given entity
-    # each line of adj_relation stores the corresponding sampled neighbor relations
-    adj_entity = np.zeros([entity_num, args.neighbor_sample_size], dtype=np.int64)
-    adj_relation = np.zeros([entity_num, args.neighbor_sample_size], dtype=np.int64)
-    for entity in range(entity_num):
-        neighbors = kg[entity]
-        n_neighbors = len(neighbors)
-        if n_neighbors >= args.neighbor_sample_size:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=args.neighbor_sample_size, replace=False)
-        else:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=args.neighbor_sample_size, replace=True)
-        adj_entity[entity] = np.array([neighbors[i][0] for i in sampled_indices])
-        adj_relation[entity] = np.array([neighbors[i][1] for i in sampled_indices])
-
-    return adj_entity, adj_relation
+def construct_adj_entity(edges, entity_num):
+    print('constructing adjacency entity ...')
+    adj_entity = sp.csr_matrix((np.ones(
+        (edges.shape[0]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
+        shape=(entity_num, entity_num))
+    # adj_entity = sp.csr_matrix((np.array(
+    #     (edges[:, 1]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
+    #     shape=(entity_num, entity_num))
+    # treat the KG as an undirected graph
+    adj_entity += adj_entity.transpose()
+    return adj_entity

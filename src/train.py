@@ -1,16 +1,28 @@
 # import tensorflow as tf
 import numpy as np
 from model import KGCN
+import partition_utils
 import tensorflow.compat.v1 as tf
+
+
+
 tf.disable_v2_behavior()
 
 
 def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
+    # n_user, n_item = data[0], data[1]
     train_data, eval_data, test_data = data[4], data[5], data[6]
-    adj_entity, adj_relation = data[7], data[8]
+    adj, idx_nodes, kg = data[7], data[8], data[9]
 
-    model = KGCN(args, n_user, n_entity, n_relation, adj_entity, adj_relation)
+    total_adj_entities, total_adj_relations = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters, kg)
+
+    # parts_adj_entities, parts_adj_relations, parts, node_parts_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
+    # parts_n_entities, parts_n_relations = partition_utils.get_parts_n(parts_adj_relations, parts, args.num_clusters)
+    # TODO multi-clusters
+
+    model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
+    # model = KGCN(args, n_user, parts_n_entities, parts_n_relations, parts_adj_entities, parts_adj_relations, parts, node_parts_map)
 
     # top-K evaluation settings
     user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
@@ -22,7 +34,7 @@ def train(args, data, show_loss, show_topk):
             # training
             np.random.shuffle(train_data)
             start = 0
-            # skip the last incomplete minibatch if its size < batch size
+            # skip the last incomplete mini-batch if its size < batch size
             while start + args.batch_size <= train_data.shape[0]:
                 _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
                 start += args.batch_size

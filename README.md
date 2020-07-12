@@ -11,6 +11,22 @@ In Proceedings of The 2019 Web Conference (WWW 2019)
 KGCN is **K**nowledge **G**raph **C**onvolutional **N**etworks for recommender systems, which uses the technique of graph convolutional networks (GCN) to proces knowledge graphs for the purpose of recommendation.
 
 
+1) Download metis-5.1.0.tar.gz from http://glaros.dtc.umn.edu/gkhome/metis/metis/download and unpack it
+2) cd metis-5.1.0
+3) make config shared=1 prefix=~/.local/
+4) make install
+//5) export METIS_DLL=~/.local/lib/libmetis.so
+5) export METIS_DLL=~/.local/lib/libmetis.dylib
+```
+
+* install required Python packages
+
+```
+ pip3 install -r requirements.txt
+
+
+
+
 ### Files in the folder
 
 - `data/`
