@@ -47,10 +47,10 @@ def partition_graph(adj, idx_nodes, num_clusters):
 
     # parts = [[] for _ in range(num_clusters)]
 
-    for nd_idx in range(num_nodes):
-        gp_idx = groups[nd_idx]
-        nd_orig_idx = idx_nodes[nd_idx]
-        # parts[gp_idx].append(nd_orig_idx)
+    # for nd_idx in range(num_nodes):
+    #     gp_idx = groups[nd_idx]
+    #     nd_orig_idx = idx_nodes[nd_idx]
+    #     # parts[gp_idx].append(nd_orig_idx)
 
     tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
     print('Partitioning done. %f seconds.', time.time() - start_time)
@@ -83,14 +83,12 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     map_id = 0
     for _, st in enumerate(range(0, num_clusters, block_size)):
         group_id = group_ids[st]
-        # print("group_id:", group_id)
         multi_parts_map[group_id] = map_id
         for pt_idx in range(st + 1, min(st + block_size, num_clusters)):
             group_id = group_ids[pt_idx]
             multi_parts_map[group_id] = map_id
         map_id += 1
 
-    # print("multi_parts_map:", multi_parts_map)
     for nd_idx in range(num_nodes):
         count = 0
         times = 0
@@ -114,16 +112,15 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                     max_count = times
             count += 1
 
-
         total_adj_entities.append(adj_entities)
         total_adj_relations.append(adj_relations)
 
     print("max_count:", max_count)
 
-    total_adj_entities = np.hstack(np.insert(total_adj_entities, range(1, len(total_adj_entities) + 1), [[0] * (max_count - len(i))
-                                                                            for i in total_adj_entities])).astype('int32').reshape(len(total_adj_entities), max_count)
-    total_adj_relations = np.hstack(np.insert(total_adj_relations, range(1, len(total_adj_relations) + 1), [[0] * (max_count - len(i))
-                                                                            for i in total_adj_relations])).astype('int32').reshape(len(total_adj_relations), max_count)
+    # total_adj_entities = np.hstack(np.insert(total_adj_entities, range(1, len(total_adj_entities) + 1), [[0] * (max_count - len(i))
+    #                                                                         for i in total_adj_entities])).astype('int32').reshape(len(total_adj_entities), max_count)
+    # total_adj_relations = np.hstack(np.insert(total_adj_relations, range(1, len(total_adj_relations) + 1), [[0] * (max_count - len(i))
+    #                                                                         for i in total_adj_relations])).astype('int32').reshape(len(total_adj_relations), max_count)
     tf.logging.info('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
 
