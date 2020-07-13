@@ -15,14 +15,12 @@ def train(args, data, show_loss, show_topk):
     train_data, eval_data, test_data = data[4], data[5], data[6]
     adj, idx_nodes, kg = data[7], data[8], data[9]
 
-    total_adj_entities, total_adj_relations = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters, kg)
-
-    # parts_adj_entities, parts_adj_relations, parts, node_parts_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
-    # parts_n_entities, parts_n_relations = partition_utils.get_parts_n(parts_adj_relations, parts, args.num_clusters)
-    # TODO multi-clusters
+    groups, train_ord_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
+    total_adj_entities, total_adj_relations = \
+        partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters, args.block_size, diag_lambda=-1)
+    # pre-process multi-clusters
 
     model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
-    # model = KGCN(args, n_user, parts_n_entities, parts_n_relations, parts_adj_entities, parts_adj_relations, parts, node_parts_map)
 
     # top-K evaluation settings
     user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)

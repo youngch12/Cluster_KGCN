@@ -42,14 +42,15 @@ parser.add_argument('--ratio', type=float, default=1, help='size of training dat
 # music
 parser.add_argument('--dataset', type=str, default='music', help='which dataset to use')
 parser.add_argument('--aggregator', type=str, default='sum', help='which aggregator to use')
-parser.add_argument('--n_epochs', type=int, default=10, help='the number of epochs')
+parser.add_argument('--n_epochs', type=int, default=50, help='the number of epochs')
 # parser.add_argument('--neighbor_sample_size', type=int, default=8, help='the number of neighbors to be sampled')
 parser.add_argument('--dim', type=int, default=16, help='dimension of user and entity embeddings')
 parser.add_argument('--n_iter', type=int, default=1, help='number of iterations when computing entity representation')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--l2_weight', type=float, default=1e-4, help='weight of l2 regularization')
 parser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
-parser.add_argument('--num_clusters', type=int, default=10, help='Number of clusters')
+parser.add_argument('--num_clusters', type=int, default=5, help='Number of clusters')
+parser.add_argument('--block_size', type=int, default=1, help='Number of clusters for each batch')
 parser.add_argument('--ratio', type=float, default=1, help='size of training dataset')
 
 show_loss = False
