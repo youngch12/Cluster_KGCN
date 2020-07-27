@@ -4,6 +4,7 @@
     <extensionMap>
       <mapping pattern="sheet7" type="PLAIN_TEXT" />
       <mapping ext="dat" type="PLAIN_TEXT" />
+      <mapping ext="output" type="PLAIN_TEXT" />
       <mapping ext="pkl" type="PLAIN_TEXT" />
       <mapping ext="npz" type="PLAIN_TEXT" />
       <mapping ext="npy" type="PLAIN_TEXT" />
