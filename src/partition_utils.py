@@ -21,6 +21,7 @@ import scipy.sparse as sp
 import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+import math
 
 
 def partition_graph(adj, idx_nodes, num_clusters):
@@ -45,13 +46,6 @@ def partition_graph(adj, idx_nodes, num_clusters):
     else:
         groups = [0] * num_nodes
 
-    # parts = [[] for _ in range(num_clusters)]
-
-    # for nd_idx in range(num_nodes):
-    #     gp_idx = groups[nd_idx]
-    #     nd_orig_idx = idx_nodes[nd_idx]
-    #     # parts[gp_idx].append(nd_orig_idx)
-
     tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
     print('Partitioning done. %f seconds.', time.time() - start_time)
 
@@ -59,25 +53,16 @@ def partition_graph(adj, idx_nodes, num_clusters):
 
 
 def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
-                            num_clusters, block_size, diag_lambda=-1):
+                            num_clusters, block_size, neighbor_sample_size,
+                            train_data, eval_data, test_data):
     """Generate the batch for multiple clusters."""
 
     start_time = time.time()
 
-    # np.random.shuffle(parts)
-    # multi_parts = []
-    # for _, st in enumerate(range(0, num_clusters, block_size)):
-    #     pt = parts[st]
-    #     for pt_idx in range(st + 1, min(st + block_size, num_clusters)):
-    #         pt = np.concatenate((pt, parts[pt_idx]), axis=0)
-    #     multi_parts.append(pt)
-
-    total_adj_entities = []
-    total_adj_relations = []
     num_nodes = len(idx_nodes)
     group_ids = [i for i in range(num_clusters)]
     multi_parts_map = dict()
-    max_count = 0
+    # max_count = 0
 
     np.random.shuffle(group_ids)
     map_id = 0
@@ -89,6 +74,14 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
             multi_parts_map[group_id] = map_id
         map_id += 1
 
+    # multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
+    # multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
+    total_adj_entities = []
+    total_adj_relations = []
+    train_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
+    eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
+    test_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
+
     for nd_idx in range(num_nodes):
         count = 0
         times = 0
@@ -96,35 +89,73 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         adj_relations = []
         gp_idx = groups[nd_idx]
         nd_orig_idx = idx_nodes[nd_idx]
+        map_id = multi_parts_map[gp_idx]
+
+        tri_del_idx = []
+        for i in range(len(train_data)):
+            tr_data = train_data[i]
+            # item == entity
+            if tr_data[1] == nd_orig_idx:
+                train_data_multi_map[map_id].append(tr_data)
+                tri_del_idx.append(i)
+        train_data = np.delete(train_data, tri_del_idx, axis=0)
+
+        ev_del_idx = []
+        for i in range(len(eval_data)):
+            ev_data = eval_data[i]
+            # item == entity
+            if ev_data[1] == nd_orig_idx:
+                eval_data_multi_map[map_id].append(ev_data)
+                ev_del_idx.append(i)
+        eval_data = np.delete(eval_data, ev_del_idx, axis=0)
+
+        te_del_idx = []
+        for i in range(len(test_data)):
+            te_data = test_data[i]
+            # item == entity
+            if te_data[1] == nd_orig_idx:
+                test_data_multi_map[map_id].append(te_data)
+                te_del_idx.append(i)
+        test_data = np.delete(test_data, te_del_idx, axis=0)
 
         for nb_orig_idx in adj[nd_orig_idx].indices:
             nb_idx = train_ord_map[nb_orig_idx]
             nb_gp_idx = groups[nb_idx]
             # if a node's neighbor and this node are still in the same concated sub-graph
-            if multi_parts_map[nb_gp_idx] == multi_parts_map[gp_idx]:
+            if multi_parts_map[nb_gp_idx] == map_id:
                 relation_times = adj[nd_orig_idx].data[count]
                 key = str(nd_orig_idx) + "_" + str(nb_orig_idx)
                 for i in range(relation_times):
                     adj_entities.append(nb_orig_idx)
                     adj_relations.append(kg[key][i])
                     times += 1
-                if times > max_count:
-                    max_count = times
+                # if times > max_count:
+                #     max_count = times
             count += 1
 
-        total_adj_entities.append(adj_entities)
-        total_adj_relations.append(adj_relations)
+        # sample adj_value
+        n_neighbors = times
+        if n_neighbors == 0:
+            adj_entities = adj[nd_orig_idx].indices
+            adj_relations = adj[nd_orig_idx].data
+            n_neighbors = len(adj[nd_orig_idx].indices)
 
-    print("max_count:", max_count)
+        if n_neighbors >= neighbor_sample_size:
+            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
+        else:
+            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
 
-    # total_adj_entities = np.hstack(np.insert(total_adj_entities, range(1, len(total_adj_entities) + 1), [[0] * (max_count - len(i))
-    #                                                                         for i in total_adj_entities])).astype('int32').reshape(len(total_adj_entities), max_count)
-    # total_adj_relations = np.hstack(np.insert(total_adj_relations, range(1, len(total_adj_relations) + 1), [[0] * (max_count - len(i))
-    #                                                                         for i in total_adj_relations])).astype('int32').reshape(len(total_adj_relations), max_count)
+        total_adj_entities.append(np.array([adj_entities[i] for i in sampled_indices]))
+        total_adj_relations.append(np.array([adj_relations[i] for i in sampled_indices]))
+
+        # multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
+        # multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
+
+    # print("max_count:", max_count)
     tf.logging.info('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
 
-    return total_adj_entities, total_adj_relations
+    return np.array(total_adj_entities), np.array(total_adj_relations), train_data_multi_map, eval_data_multi_map, test_data_multi_map
 
 
 # def sparse_to_tuple(sparse_mx):

@@ -4,7 +4,9 @@ import time
 from model import KGCN
 import partition_utils
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
+import math
 
 
 def train(args, data, show_loss, show_topk):
@@ -15,14 +17,21 @@ def train(args, data, show_loss, show_topk):
 
     groups, train_ord_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
     # pre-process multi-clusters
-    total_adj_entities, total_adj_relations = \
-        partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters, args.block_size, diag_lambda=-1)
+    # total_adj_entities, total_adj_relations = \
+    #     partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters, args.block_size, args.neighbor_sample_size, diag_lambda=-1)
 
-    adj_entity, adj_relation = construct_adj(args.neighbor_sample_size, total_adj_entities, total_adj_relations, idx_nodes)
+    # pre-process multi-clusters
 
-    # model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
-    model = KGCN(args, n_user, n_entity, n_relation, adj_entity, adj_relation)
+    group_ids = list(range(math.ceil(args.num_clusters / args.block_size)))
+    total_adj_entities, total_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map = \
+        partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters,
+                                                args.block_size, args.neighbor_sample_size,
+                                                train_data, eval_data, test_data)
 
+    # adj_entity, adj_relation = construct_adj(args.neighbor_sample_size, total_adj_entities, total_adj_relations, idx_nodes)
+
+    model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
+    # model = KGCN(args, n_user, n_entity, n_relation, multi_adj_entities, multi_adj_relations)
 
     # top-K evaluation settings
     user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
@@ -33,23 +42,31 @@ def train(args, data, show_loss, show_topk):
         for step in range(args.n_epochs):
             # training
             t = time.time()
-            np.random.shuffle(train_data)
-            start = 0
-            # skip the last incomplete mini-batch if its size < batch size
-            while start + args.batch_size <= train_data.shape[0]:
-                _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
-                start += args.batch_size
-                if show_loss:
-                    print(start, loss)
+            np.random.shuffle(group_ids)
+            for pid in group_ids:
+                start = 0
+                train_data = np.array(train_data_multi_map[pid])
+                np.random.shuffle(train_data)
+                # skip the last incomplete mini-batch if its size < batch size
+                # print("shuffled_pid:", pid)
+                while start + args.batch_size <= train_data.shape[0]:
+                    _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
+                    start += args.batch_size
+                    if show_loss:
+                        print(start, loss)
 
             # CTR evaluation
-            train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size)
-            eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size)
-            test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size)
+            train_auc, train_f1 = ctr_eval(sess, model, train_data_multi_map, args.batch_size, group_ids)
+            eval_auc, eval_f1 = ctr_eval(sess, model, eval_data_multi_map, args.batch_size, group_ids)
+            test_auc, test_f1 = ctr_eval(sess, model, test_data_multi_map, args.batch_size, group_ids)
+            # train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size, group_ids)
+            # eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size, group_ids)
+            # test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size, group_ids)
 
             train_time = time.time() - t
-            print('epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
-                  % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
+            print(
+                'epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
+                % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
             # top-K evaluation
             if show_topk:
@@ -87,15 +104,17 @@ def get_feed_dict(model, data, start, end):
     return feed_dict
 
 
-def ctr_eval(sess, model, data, batch_size):
-    start = 0
+def ctr_eval(sess, model, data_multi_map, batch_size, group_ids):
     auc_list = []
     f1_list = []
-    while start + batch_size <= data.shape[0]:
-        auc, f1 = model.eval(sess, get_feed_dict(model, data, start, start + batch_size))
-        auc_list.append(auc)
-        f1_list.append(f1)
-        start += batch_size
+    for pid in group_ids:
+        start = 0
+        data = np.array(data_multi_map[pid])
+        while start + batch_size <= data.shape[0]:
+            auc, f1 = model.eval(sess, get_feed_dict(model, data, start, start + batch_size))
+            auc_list.append(auc)
+            f1_list.append(f1)
+            start += batch_size
     return float(np.mean(auc_list)), float(np.mean(f1_list))
 
 
@@ -148,25 +167,3 @@ def get_user_record(data, is_train):
                 user_history_dict[user] = set()
             user_history_dict[user].add(item)
     return user_history_dict
-
-
-def construct_adj(neighbor_sample_size, total_adj_entities, total_adj_relations, idx_nodes):
-    # print('constructing adjacency matrix ...')
-    # each line of adj_entity stores the sampled neighbor entities for a given entity
-    # each line of adj_relation stores the corresponding sampled neighbor relations
-    num_nodes = len(idx_nodes)
-    adj_entity = np.zeros([num_nodes, neighbor_sample_size], dtype=np.int64)
-    adj_relation = np.zeros([num_nodes, neighbor_sample_size], dtype=np.int64)
-
-    for nd_idx in range(num_nodes):
-        neighbors = total_adj_entities[nd_idx]
-        relations = total_adj_relations[nd_idx]
-        n_neighbors = len(neighbors)
-        if n_neighbors >= neighbor_sample_size:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
-        else:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
-        adj_entity[nd_idx] = np.array([neighbors[i] for i in sampled_indices])
-        adj_relation[nd_idx] = np.array([relations[i] for i in sampled_indices])
-
-    return adj_entity, adj_relation
