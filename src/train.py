@@ -4,14 +4,12 @@ import time
 from model import KGCN
 import partition_utils
 import tensorflow.compat.v1 as tf
-
 tf.disable_v2_behavior()
 import math
 
 
 def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
-    # n_user, n_item = data[0], data[1]
     train_data, eval_data, test_data = data[4], data[5], data[6]
     adj, idx_nodes, kg = data[7], data[8], data[9]
 
@@ -28,10 +26,7 @@ def train(args, data, show_loss, show_topk):
                                                 args.block_size, args.neighbor_sample_size,
                                                 train_data, eval_data, test_data)
 
-    # adj_entity, adj_relation = construct_adj(args.neighbor_sample_size, total_adj_entities, total_adj_relations, idx_nodes)
-
     model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
-    # model = KGCN(args, n_user, n_entity, n_relation, multi_adj_entities, multi_adj_relations)
 
     # top-K evaluation settings
     user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
@@ -48,7 +43,6 @@ def train(args, data, show_loss, show_topk):
                 train_data = np.array(train_data_multi_map[pid])
                 np.random.shuffle(train_data)
                 # skip the last incomplete mini-batch if its size < batch size
-                # print("shuffled_pid:", pid)
                 while start + args.batch_size <= train_data.shape[0]:
                     _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
                     start += args.batch_size

@@ -17,7 +17,6 @@
 
 import time
 import metis
-import scipy.sparse as sp
 import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -46,7 +45,7 @@ def partition_graph(adj, idx_nodes, num_clusters):
     else:
         groups = [0] * num_nodes
 
-    tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
+    # tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
     print('Partitioning done. %f seconds.', time.time() - start_time)
 
     return groups, train_ord_map #, parts
@@ -152,7 +151,7 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         # multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
 
     # print("max_count:", max_count)
-    tf.logging.info('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
+    # tf.logging.info('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
 
     return np.array(total_adj_entities), np.array(total_adj_relations), train_data_multi_map, eval_data_multi_map, test_data_multi_map
