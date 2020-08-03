@@ -175,41 +175,6 @@ class KGCN(object):
             relations.append(neighbor_relations)
         return entities, relations
 
-    # def aggregate(self, entities, relations):
-    #     aggregators = []  # store all aggregators
-    #     entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in entities]
-    #     relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
-    #
-    #     for entity in entities:
-    #         gp_idx = self.node_parts_map[idx]
-    #         part = self.parts[gp_idx]
-    #         adj_idx = part.index(idx)
-    #         adj_entities = self.parts_adj_entities[gp_idx]
-    #         adj_relations = self.parts_adj_relations[gp_idx]
-    #         neighbor_entities.append(adj_entities[adj_idx])
-    #         neighbor_relations.append(adj_relations[adj_idx])
-    #
-    #
-    #     for i in range(self.n_iter):
-    #         if i == self.n_iter - 1:
-    #             aggregator = self.aggregator_class(self.batch_size, self.dim, act=tf.nn.tanh)
-    #         else:
-    #             aggregator = self.aggregator_class(self.batch_size, self.dim)
-    #         aggregators.append(aggregator)
-    #
-    #         entity_vectors_next_iter = []
-    #         for hop in range(self.n_iter - i):
-    #             shape = [self.batch_size, -1, self.n_neighbor, self.dim]
-    #             vector = aggregator(self_vectors=entity_vectors[hop],
-    #                                 neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
-    #                                 neighbor_relations=tf.reshape(relation_vectors[hop], shape),
-    #                                 user_embeddings=self.user_embeddings)
-    #             entity_vectors_next_iter.append(vector)
-    #         entity_vectors = entity_vectors_next_iter
-    #
-    #     res = tf.reshape(entity_vectors[0], [self.batch_size, self.dim])
-    #
-    #     return res, aggregators
 
     def aggregate(self, entities, relations):
         aggregators = []  # store all aggregators
