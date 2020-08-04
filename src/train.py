@@ -42,11 +42,14 @@ def train(args, data, show_loss, show_topk):
             train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size)
             eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size)
             test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size)
-            print("vmem_2:", ps.virtual_memory())
+            values = ps.virtual_memory()
+            # print("vmem:", values)
+            used_memory = values.used / (1024.0 ** 3)
+            # print("used_memory:", used_memory)
 
             train_time = time.time() - t
-            print('epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
-                  % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
+            print('epoch %d   training time: %.5f   used_memory: %.5f    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
+                  % (step, train_time, used_memory, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
             # top-K evaluation
             if show_topk:
