@@ -1,7 +1,7 @@
 # import tensorflow as tf
 import numpy as np
 import time
-from model import KGCN
+import models
 import partition_utils
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -21,15 +21,37 @@ def train(args, data, show_loss, show_topk):
     # pre-process multi-clusters
 
     group_ids = list(range(math.ceil(args.num_clusters / args.block_size)))
-    total_adj_entities, total_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map = \
+    multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map = \
         partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters,
                                                 args.block_size, args.neighbor_sample_size,
                                                 train_data, eval_data, test_data)
 
-    model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
+    # model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
 
-    # top-K evaluation settings
-    user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
+    # Some preprocessing
+    model_func = models.KGCN
+
+    # Define placeholders
+    placeholders = {
+        'adj_entity':
+            tf.placeholder(tf.int64),
+        'adj_relation':
+            tf.placeholder(tf.int64),
+        'user_indices':
+            tf.placeholder(tf.int64),
+        'item_indices':
+            tf.placeholder(tf.int64),
+        'labels':
+            tf.placeholder(tf.float32)
+    }
+
+    # Create model
+    model = model_func(
+        placeholders,
+        args=args,
+        n_user=n_user,
+        n_entity=n_entity,
+        n_relation=n_relation)
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -44,36 +66,29 @@ def train(args, data, show_loss, show_topk):
                 np.random.shuffle(train_data)
                 # skip the last incomplete mini-batch if its size < batch size
                 while start + args.batch_size <= train_data.shape[0]:
-                    _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
+                    # _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
+                    feed_dict = construct_feed_dict(
+                        multi_adj_entities[pid], multi_adj_relations[pid], train_data, start, start + args.batch_size,
+                        placeholders)
+                    _, loss = model.train(sess, feed_dict=feed_dict)
                     start += args.batch_size
                     if show_loss:
                         print(start, loss)
 
             # CTR evaluation
-            train_auc, train_f1 = ctr_eval(sess, model, train_data_multi_map, args.batch_size, group_ids)
-            eval_auc, eval_f1 = ctr_eval(sess, model, eval_data_multi_map, args.batch_size, group_ids)
-            test_auc, test_f1 = ctr_eval(sess, model, test_data_multi_map, args.batch_size, group_ids)
+            train_auc, train_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, train_data_multi_map,
+                                           args.batch_size, group_ids, placeholders)
+            eval_auc, eval_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, eval_data_multi_map,
+                                         args.batch_size, group_ids, placeholders)
+            test_auc, test_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, test_data_multi_map,
+                                         args.batch_size, group_ids, placeholders)
             # train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size, group_ids)
             # eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size, group_ids)
             # test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size, group_ids)
-
             train_time = time.time() - t
             print(
                 'epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
                 % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
-
-            # top-K evaluation
-            if show_topk:
-                precision, recall = topk_eval(
-                    sess, model, user_list, train_record, test_record, item_set, k_list, args.batch_size)
-                print('precision: ', end='')
-                for i in precision:
-                    print('%.4f\t' % i, end='')
-                print()
-                print('recall: ', end='')
-                for i in recall:
-                    print('%.4f\t' % i, end='')
-                print('\n')
 
 
 def topk_settings(show_topk, train_data, test_data, n_item):
@@ -98,14 +113,31 @@ def get_feed_dict(model, data, start, end):
     return feed_dict
 
 
-def ctr_eval(sess, model, data_multi_map, batch_size, group_ids):
+def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders):
+    """Construct feed dictionary."""
+    feed_dict = dict()
+    feed_dict.update({placeholders['adj_entity']: adj_entity})
+    feed_dict.update({placeholders['adj_relation']: adj_relation})
+    feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
+    feed_dict.update({placeholders['item_indices']: data[start:end, 1]})
+    feed_dict.update({placeholders['labels']: data[start:end, 2]})
+    # feed_dict.update({placeholders['entity_emb_matrix']: tf.get_variable(
+    #     shape=[len(adj_entity), dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')})
+    return feed_dict
+
+
+def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_map, batch_size, group_ids,
+             placeholders):
     auc_list = []
     f1_list = []
     for pid in group_ids:
         start = 0
         data = np.array(data_multi_map[pid])
         while start + batch_size <= data.shape[0]:
-            auc, f1 = model.eval(sess, get_feed_dict(model, data, start, start + batch_size))
+            feed_dict = construct_feed_dict(
+                multi_adj_entities[pid], multi_adj_relations[pid], data, start, start + batch_size, placeholders)
+            auc, f1 = model.eval(sess, feed_dict=feed_dict)
+
             auc_list.append(auc)
             f1_list.append(f1)
             start += batch_size

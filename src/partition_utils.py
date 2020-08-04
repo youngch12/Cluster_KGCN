@@ -73,10 +73,10 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
             multi_parts_map[group_id] = map_id
         map_id += 1
 
-    # multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
-    # multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
-    total_adj_entities = []
-    total_adj_relations = []
+    multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
+    multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
+    # total_adj_entities = []
+    # total_adj_relations = []
     train_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
     eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
     test_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
@@ -144,17 +144,17 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         else:
             sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
 
-        total_adj_entities.append(np.array([adj_entities[i] for i in sampled_indices]))
-        total_adj_relations.append(np.array([adj_relations[i] for i in sampled_indices]))
+        # total_adj_entities.append(np.array([adj_entities[i] for i in sampled_indices]))
+        # total_adj_relations.append(np.array([adj_relations[i] for i in sampled_indices]))
 
-        # multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
-        # multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
+        multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
+        multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
 
     # print("max_count:", max_count)
     # tf.logging.info('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
 
-    return np.array(total_adj_entities), np.array(total_adj_relations), train_data_multi_map, eval_data_multi_map, test_data_multi_map
+    return multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map
 
 
 # def sparse_to_tuple(sparse_mx):

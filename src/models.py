@@ -3,31 +3,35 @@ from aggregators import SumAggregator, ConcatAggregator, NeighborAggregator
 from sklearn.metrics import f1_score, roc_auc_score
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
-import numpy as np
 
 
-class KGCN(object):
-    def __init__(self, args, n_user, n_entity, n_relation, adj_entity, adj_relation):
-        self._parse_args(args, adj_entity, adj_relation)
-        self._build_inputs()
-        self._build_model(n_user, n_entity, n_relation)
-        self._build_train()
+class Model(object):
+    def __init__(self, placeholders, args, n_user, n_entity, n_relation):
+        self._parse_args(args, n_user, n_entity, n_relation)
+        # self._build_inputs()
+        # self._build_model(self, n_user, n_relation)
+        # self._build_train()
 
     @staticmethod
     def get_initializer():
         return tf.glorot_uniform_initializer()
 
-    def _parse_args(self, args, adj_entity, adj_relation):
+    def _parse_args(self, args, n_user, n_entity, n_relation):
         # [entity_num, neighbor_sample_size]
-        self.adj_entity = adj_entity
-        self.adj_relation = adj_relation
-
+        self.adj_entity = None
+        self.adj_relation = None
+        self.entity_emb_matrix = None
+        self.n_user = n_user
+        self.n_entity = n_entity
+        self.n_relation = n_relation
+        self.placeholders = {}
         self.n_iter = args.n_iter
         self.batch_size = args.batch_size
         self.n_neighbor = args.neighbor_sample_size
         self.dim = args.dim
         self.l2_weight = args.l2_weight
         self.lr = args.lr
+        self.optimizer = None
         if args.aggregator == 'sum':
             self.aggregator_class = SumAggregator
         elif args.aggregator == 'concat':
@@ -37,29 +41,22 @@ class KGCN(object):
         else:
             raise Exception("Unknown aggregator: " + args.aggregator)
 
-    def _build_inputs(self):
-        self.user_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='user_indices')
-        self.item_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='item_indices')
-        self.labels = tf.placeholder(dtype=tf.float32, shape=[None], name='labels')
+    # def _build_inputs(self):
+    #     self.user_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='user_indices')
+    #     self.item_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='item_indices')
+    #     self.labels = tf.placeholder(dtype=tf.float32, shape=[None], name='labels')
 
-    def _build_model(self, n_user, n_entity, n_relation):
-        # pid = self.pid.get_shape().as_list()[0]
-        # print("build_pid:", pid)
-        # if pid == None:
-        #     print("None!")
-        #     pid = 0
-        #
-        # self.adj_entity = np.array(self.multi_adj_entities[pid])
-        # self.adj_relation = np.array(self.multi_adj_relations[pid])
-        # # n_entity = len(self.adj_entity)
-        # # print("n_entity:", n_entity)
+    def build(self):
+        self._build_model()
+        self._build_train()
 
+    def _build_model(self):
         self.user_emb_matrix = tf.get_variable(
-            shape=[n_user, self.dim], initializer=KGCN.get_initializer(), name='user_emb_matrix')
-        self.entity_emb_matrix = tf.get_variable(
-            shape=[n_entity, self.dim], initializer=KGCN.get_initializer(), name='entity_emb_matrix')
+            shape=[self.n_user, self.dim], initializer=KGCN.get_initializer(), name='user_emb_matrix')
         self.relation_emb_matrix = tf.get_variable(
-            shape=[n_relation, self.dim], initializer=KGCN.get_initializer(), name='relation_emb_matrix')
+            shape=[self.n_relation, self.dim], initializer=KGCN.get_initializer(), name='relation_emb_matrix')
+        self.entity_emb_matrix = tf.get_variable(
+            shape=[self.n_entity, self.dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')
 
         # [batch_size, dim]
         self.user_embeddings = tf.nn.embedding_lookup(self.user_emb_matrix, self.user_indices)
@@ -123,10 +120,10 @@ class KGCN(object):
             self.l2_loss = self.l2_loss + tf.nn.l2_loss(aggregator.weights)
         self.loss = self.base_loss + self.l2_weight * self.l2_loss
 
-        self.optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+        self.opt_op = self.optimizer.minimize(self.loss)
 
     def train(self, sess, feed_dict):
-        return sess.run([self.optimizer, self.loss], feed_dict)
+        return sess.run([self.opt_op, self.loss], feed_dict)
 
     def eval(self, sess, feed_dict):
         labels, scores = sess.run([self.labels, self.scores_normalized], feed_dict)
@@ -138,3 +135,28 @@ class KGCN(object):
 
     def get_scores(self, sess, feed_dict):
         return sess.run([self.item_indices, self.scores_normalized], feed_dict)
+
+
+class KGCN(Model):
+  """Implementation of KGCN model."""
+
+  def __init__(self, placeholders, args, n_user, n_entity, n_relation):
+    super(KGCN, self).__init__(placeholders, args, n_user, n_entity, n_relation)
+
+    self.adj_entity = placeholders['adj_entity']
+    self.adj_relation = placeholders['adj_relation']
+    self.user_indices = placeholders['user_indices']
+    self.item_indices = placeholders['item_indices']
+    self.labels = placeholders['labels']
+
+    # n_entity = placeholders['adj_entity'].get_shape().as_list()[0]
+    # self.entity_emb_matrix = placeholders['entity_emb_matrix']
+
+    self.optimizer = tf.train.AdamOptimizer(args.lr)
+    self.placeholders = placeholders
+
+    self.build()
+
+  # def _build(self):
+  #
+  #   self.layers.append(
