@@ -215,8 +215,8 @@ class KGCN(object):
 
         self.optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
-    def train(self, sess, feed_dict):
-        return sess.run([self.optimizer, self.loss], feed_dict)
+    def train(self, sess, feed_dict, run_options, run_metadata):
+        return sess.run([self.optimizer, self.loss], feed_dict, options=run_options, run_metadata=run_metadata)
 
     def eval(self, sess, feed_dict):
         labels, scores = sess.run([self.labels, self.scores_normalized], feed_dict)
