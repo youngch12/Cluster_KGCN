@@ -78,6 +78,7 @@ class Model(object):
         entities = [seeds]
         relations = []
         for i in range(self.n_iter):
+            print("self.adj_entity.shape:", self.adj_entity)
             neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
             neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
             entities.append(neighbor_entities)

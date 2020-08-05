@@ -81,6 +81,10 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
     test_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
 
+    train_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
+    eval_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
+    test_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
+
     for nd_idx in range(num_nodes):
         count = 0
         times = 0
@@ -92,28 +96,35 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
 
         tri_del_idx = []
         for i in range(len(train_data)):
-            tr_data = train_data[i]
+            tr_data = np.array(train_data[i]).tolist()
             # item == entity
             if tr_data[1] == nd_orig_idx:
-                train_data_multi_map[map_id].append(tr_data)
+                # tr_data.append(train_multi_map_idx[map_id])
+                tr_data = np.append(tr_data, train_multi_map_idx[map_id])
+                train_data_multi_map[map_id].append(np.array(tr_data))
+                train_multi_map_idx[map_id] += 1
                 tri_del_idx.append(i)
         train_data = np.delete(train_data, tri_del_idx, axis=0)
 
         ev_del_idx = []
         for i in range(len(eval_data)):
-            ev_data = eval_data[i]
+            ev_data = np.array(eval_data[i]).tolist()
             # item == entity
             if ev_data[1] == nd_orig_idx:
-                eval_data_multi_map[map_id].append(ev_data)
+                ev_data.append(eval_multi_map_idx[map_id])
+                eval_data_multi_map[map_id].append(np.array(ev_data))
+                eval_multi_map_idx[map_id] += 1
                 ev_del_idx.append(i)
         eval_data = np.delete(eval_data, ev_del_idx, axis=0)
 
         te_del_idx = []
         for i in range(len(test_data)):
-            te_data = test_data[i]
+            te_data = np.array(test_data[i]).tolist()
             # item == entity
             if te_data[1] == nd_orig_idx:
-                test_data_multi_map[map_id].append(te_data)
+                te_data.append(test_multi_map_idx[map_id])
+                test_data_multi_map[map_id].append(np.array(te_data))
+                test_multi_map_idx[map_id] += 1
                 te_del_idx.append(i)
         test_data = np.delete(test_data, te_del_idx, axis=0)
 

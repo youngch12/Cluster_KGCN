@@ -67,6 +67,8 @@ def train(args, data, show_loss, show_topk):
                 # skip the last incomplete mini-batch if its size < batch size
                 while start + args.batch_size <= train_data.shape[0]:
                     # _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
+                    print("len(multi_adj_relations[pid]", multi_adj_relations[pid].shape)
+                    print("len(train_data", train_data.shape)
                     feed_dict = construct_feed_dict(
                         multi_adj_entities[pid], multi_adj_relations[pid], train_data, start, start + args.batch_size,
                         placeholders)
@@ -119,10 +121,8 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
     feed_dict.update({placeholders['adj_entity']: adj_entity})
     feed_dict.update({placeholders['adj_relation']: adj_relation})
     feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
-    feed_dict.update({placeholders['item_indices']: data[start:end, 1]})
+    feed_dict.update({placeholders['item_indices']: data[start:end, 3]})
     feed_dict.update({placeholders['labels']: data[start:end, 2]})
-    # feed_dict.update({placeholders['entity_emb_matrix']: tf.get_variable(
-    #     shape=[len(adj_entity), dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')})
     return feed_dict
 
 
