@@ -1,5 +1,7 @@
 # import tensorflow as tf
 import numpy as np
+import time
+import psutil as ps
 from model import KGCN
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -26,6 +28,7 @@ def train(args, data, show_loss, show_topk):
 
         for step in range(args.n_epochs):
             # training
+            t = time.time()
             np.random.shuffle(train_data)
             start = 0
             i = 0
@@ -47,8 +50,15 @@ def train(args, data, show_loss, show_topk):
             eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size)
             test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size)
 
-            print('epoch %d    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
-                  % (step, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
+            values = ps.virtual_memory()
+            used_memory = values.used / (1024.0 ** 3)
+            train_time = time.time() - t
+
+            # print('epoch %d    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
+            #       % (step, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
+            print(
+                'epoch %d   training time: %.5f   used_memory: %.5f    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
+                % (step, train_time, used_memory, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
         # # 统计模型的memory使用大小
         profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
