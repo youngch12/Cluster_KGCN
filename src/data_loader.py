@@ -23,7 +23,7 @@ def load_rating(args):
 
     n_user = len(set(rating_np[:, 0]))
     n_item = len(set(rating_np[:, 1]))
-    train_data, eval_data, test_data = dataset_sxplit(rating_np, args)
+    train_data, eval_data, test_data = dataset_split(rating_np, args)
 
     return n_user, n_item, train_data, eval_data, test_data
 

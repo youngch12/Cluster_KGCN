@@ -3,6 +3,8 @@ import numpy as np
 from model import KGCN
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+from tensorflow.python.profiler import model_analyzer
+from tensorflow.python.profiler import option_builder
 
 
 def train(args, data, show_loss, show_topk):
@@ -17,15 +19,26 @@ def train(args, data, show_loss, show_topk):
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
+        # monitor the usage of memory while training the model
+        profiler = model_analyzer.Profiler(graph=sess.graph)
+        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
 
         for step in range(args.n_epochs):
             # training
             np.random.shuffle(train_data)
             start = 0
+            i = 0
             # skip the last incomplete minibatch if its size < batch size
             while start + args.batch_size <= train_data.shape[0]:
-                _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size))
+                _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size),
+                                      run_options, run_metadata)
+                if i == 0:
+                    # 将本步搜集的统计数据添加到tfprofiler实例中
+                    profiler.add_step(step=step, run_meta=run_metadata)
+
                 start += args.batch_size
+                i += 1
                 if show_loss:
                     print(start, loss)
 
@@ -37,18 +50,29 @@ def train(args, data, show_loss, show_topk):
             print('epoch %d    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
                   % (step, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
-            # top-K evaluation
-            if show_topk:
-                precision, recall = topk_eval(
-                    sess, model, user_list, train_record, test_record, item_set, k_list, args.batch_size)
-                print('precision: ', end='')
-                for i in precision:
-                    print('%.4f\t' % i, end='')
-                print()
-                print('recall: ', end='')
-                for i in recall:
-                    print('%.4f\t' % i, end='')
-                print('\n')
+        # # 统计模型的memory使用大小
+        profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
+            option_builder.ProfileOptionBuilder.trainable_variables_parameter())
+        # 显示字段是params，即参数
+        profile_scope_opt_builder.select(['params'])
+        # 根据params数量进行显示结果排序
+        profile_scope_opt_builder.order_by('params')
+        # 显示视图为scope view
+        profiler.profile_name_scope(profile_scope_opt_builder.build())
+
+        # ------------------------------------
+        # 最耗时top 5 ops
+        profile_op_opt_builder = option_builder.ProfileOptionBuilder()
+
+        # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
+        profile_op_opt_builder.select(['micros', 'occurrence'])
+        # 根据op执行时间进行显示结果排序
+        profile_op_opt_builder.order_by('micros')
+        # 过滤条件：只显示排名top 5
+        profile_op_opt_builder.with_max_depth(4)
+
+        # 显示视图为op view
+        profiler.profile_operations(profile_op_opt_builder.build())
 
 
 def topk_settings(show_topk, train_data, test_data, n_item):
