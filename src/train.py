@@ -23,7 +23,7 @@ def train(args, data, show_loss, show_topk):
     model = KGCN(args, n_user, n_entity, n_relation, total_adj_entities, total_adj_relations)
 
     # top-K evaluation settings
-    user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
+    # user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item)
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -48,8 +48,8 @@ def train(args, data, show_loss, show_topk):
 
                 start += args.batch_size
                 i += 1
-                if show_loss:
-                    print(start, loss)
+                # if show_loss:
+                #     print(start, loss)
 
             # CTR evaluation
             train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size)
