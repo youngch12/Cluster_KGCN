@@ -55,8 +55,8 @@ class Model(object):
             shape=[self.n_user, self.dim], initializer=KGCN.get_initializer(), name='user_emb_matrix')
         self.relation_emb_matrix = tf.get_variable(
             shape=[self.n_relation, self.dim], initializer=KGCN.get_initializer(), name='relation_emb_matrix')
-        self.entity_emb_matrix = tf.get_variable(
-            shape=[self.n_entity, self.dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')
+        # self.entity_emb_matrix = tf.get_variable(
+        #     shape=[self.n_entity, self.dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')
 
         # [batch_size, dim]
         self.user_embeddings = tf.nn.embedding_lookup(self.user_emb_matrix, self.user_indices)
@@ -78,7 +78,6 @@ class Model(object):
         entities = [seeds]
         relations = []
         for i in range(self.n_iter):
-            print("self.adj_entity.shape:", self.adj_entity)
             neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
             neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
             entities.append(neighbor_entities)
@@ -123,6 +122,9 @@ class Model(object):
 
         self.opt_op = self.optimizer.minimize(self.loss)
 
+    # def train(self, sess, feed_dict, run_options, run_metadata):
+    #     return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=
+
     def train(self, sess, feed_dict):
         return sess.run([self.opt_op, self.loss], feed_dict)
 
@@ -149,15 +151,9 @@ class KGCN(Model):
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
     self.labels = placeholders['labels']
-
-    # n_entity = placeholders['adj_entity'].get_shape().as_list()[0]
-    # self.entity_emb_matrix = placeholders['entity_emb_matrix']
+    self.entity_emb_matrix = placeholders['entity_emb_matrix']
 
     self.optimizer = tf.train.AdamOptimizer(args.lr)
     self.placeholders = placeholders
 
     self.build()
-
-  # def _build(self):
-  #
-  #   self.layers.append(

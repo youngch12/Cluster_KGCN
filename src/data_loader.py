@@ -7,9 +7,11 @@ def load_data(args):
     n_user, n_item, train_data, eval_data, test_data = load_rating(args)
     # n_entity, n_relation, adj_entity, adj_relation = load_kg(args)
     n_entity, n_relation, adj_entity, idx_nodes, kg = load_kg(args)
+    node_feature = load_node_feature(args)
     print('data loaded.')
 
-    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes, kg
+    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes \
+        , kg, node_feature
 
 
 def load_rating(args):
@@ -70,7 +72,7 @@ def load_kg(args):
     # adj_entity, adj_relation = construct_adj(args, kg, edges, n_entity)
     adj_entity = construct_adj_entity(edges, n_entity)
 
-    return n_entity, n_relation, adj_entity, idx_nodes, kg  #, adj_relation
+    return n_entity, n_relation, adj_entity, idx_nodes, kg  # , adj_relation
 
 
 def construct_kg(kg_np):
@@ -118,3 +120,10 @@ def construct_adj_entity(edges, entity_num):
     # treat the KG as an undirected graph
     adj_entity += adj_entity.transpose()
     return adj_entity
+
+
+def load_node_feature(args):
+    print("loading node feature ...")
+    feature_file = '../data/' + args.dataset + '/node_feature'
+    feature_np = np.load(feature_file + '.npy')
+    return feature_np
