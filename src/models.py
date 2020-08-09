@@ -20,7 +20,10 @@ class Model(object):
         # [entity_num, neighbor_sample_size]
         self.adj_entity = None
         self.adj_relation = None
+        self.relation_emb_matrix = None
         self.entity_emb_matrix = None
+        self.user_emb_matrix = None
+
         self.n_user = n_user
         self.n_entity = n_entity
         self.n_relation = n_relation
@@ -56,7 +59,7 @@ class Model(object):
         self.relation_emb_matrix = tf.get_variable(
             shape=[self.n_relation, self.dim], initializer=KGCN.get_initializer(), name='relation_emb_matrix')
         # self.entity_emb_matrix = tf.get_variable(
-        #     shape=[self.n_entity, self.dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')
+        #     shape=[self.n_entity, self.dim], initializer=KGCN.get_initializer(), name='entity_emb_matrix')
 
         # [batch_size, dim]
         self.user_embeddings = tf.nn.embedding_lookup(self.user_emb_matrix, self.user_indices)
@@ -140,6 +143,15 @@ class Model(object):
         return sess.run([self.item_indices, self.scores_normalized], feed_dict)
 
 
+LAYER_IDS = {}
+def get_layer_id(layer_name=''):
+    if layer_name not in LAYER_IDS:
+        LAYER_IDS[layer_name] = 0
+        return 0
+    else:
+        LAYER_IDS[layer_name] += 1
+        return LAYER_IDS[layer_name]
+
 class KGCN(Model):
   """Implementation of KGCN model."""
 
@@ -151,7 +163,13 @@ class KGCN(Model):
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
     self.labels = placeholders['labels']
+    pid = placeholders['pid'].get_shape().as_list()[0]
+
+
+
     self.entity_emb_matrix = placeholders['entity_emb_matrix']
+    # self.user_emb_matrix = placeholders['user_emb_matrix']
+    # self.relation_emb_matrix = placeholders['relation_emb_matrix']
 
     self.optimizer = tf.train.AdamOptimizer(args.lr)
     self.placeholders = placeholders

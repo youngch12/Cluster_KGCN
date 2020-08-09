@@ -13,7 +13,7 @@ def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
     train_data, eval_data, test_data = data[4], data[5], data[6]
     adj, idx_nodes, kg = data[7], data[8], data[9]
-    node_feature = data[10]
+    node_feature, user_emb_matrix, relation_emb_matrix = data[10], data[11], data[12]
 
     groups, train_ord_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
     # pre-process multi-clusters
@@ -44,9 +44,19 @@ def train(args, data, show_loss, show_topk):
         'item_indices':
             tf.placeholder(tf.int64),
         'labels':
-            tf.placeholder(tf.float32),
+            tf.placeholder(tf.float64)
+        ,
         'entity_emb_matrix':
-            tf.placeholder(tf.float32)
+            tf.placeholder(tf.float64)
+        ,
+        'user_emb_matrix':
+            tf.placeholder(tf.float64)
+        ,
+        'relation_emb_matrix':
+            tf.placeholder(tf.float64)
+        ,
+        'pid':
+            tf.placeholder(tf.int32)
     }
 
     # Create model
@@ -74,8 +84,11 @@ def train(args, data, show_loss, show_topk):
                 np.random.shuffle(train_data)
                 # skip the last incomplete mini-batch if its size < batch size
                 while start + args.batch_size <= train_data.shape[0]:
-                    feed_dict = construct_feed_dict(multi_adj_entities[pid], multi_adj_relations[pid], train_data,
-                                                    start, start + args.batch_size, placeholders, multi_node_feature[pid])
+                    # feed_dict = construct_feed_dict(multi_adj_entities[pid], multi_adj_relations[pid], train_data,
+                    #                                 start, start + args.batch_size, placeholders, multi_node_feature[pid])
+                    feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
+                                                    start, start + args.batch_size, placeholders,
+                                                    node_feature, user_emb_matrix, relation_emb_matrix)
 
                     _, loss = model.train(sess, feed_dict)
                     # _, loss = model.train(sess, feed_dict, run_options, run_metadata)
@@ -87,11 +100,11 @@ def train(args, data, show_loss, show_topk):
 
             # CTR evaluation
             train_auc, train_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, train_data_multi_map,
-                                           args.batch_size, group_ids, placeholders, multi_node_feature)
+                                           args.batch_size, group_ids, placeholders, node_feature, user_emb_matrix, relation_emb_matrix)
             eval_auc, eval_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, eval_data_multi_map,
-                                         args.batch_size, group_ids, placeholders, multi_node_feature)
+                                         args.batch_size, group_ids, placeholders, node_feature, user_emb_matrix, relation_emb_matrix)
             test_auc, test_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, test_data_multi_map,
-                                         args.batch_size, group_ids, placeholders, multi_node_feature)
+                                         args.batch_size, group_ids, placeholders, node_feature, user_emb_matrix, relation_emb_matrix)
             train_time = time.time() - t
             print(
                 'epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
@@ -144,28 +157,32 @@ def get_feed_dict(model, data, start, end):
     return feed_dict
 
 
-def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders, node_feature):
+def construct_feed_dict(pid, adj_entity, adj_relation, data, start, end, placeholders, node_feature, user_emb_matrix, relation_emb_matrix):
     """Construct feed dictionary."""
     feed_dict = dict()
+    feed_dict.update({placeholders['pid']: np.ones(pid)})
     feed_dict.update({placeholders['adj_entity']: adj_entity})
     feed_dict.update({placeholders['adj_relation']: adj_relation})
     feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
     feed_dict.update({placeholders['item_indices']: data[start:end, 3]})
     feed_dict.update({placeholders['labels']: data[start:end, 2]})
     feed_dict.update({placeholders['entity_emb_matrix']: node_feature})
+    feed_dict.update({placeholders['user_emb_matrix']: user_emb_matrix})
+    feed_dict.update({placeholders['relation_emb_matrix']: relation_emb_matrix})
+
     return feed_dict
 
 
 def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_map, batch_size, group_ids,
-             placeholders, multi_node_feature):
+             placeholders, node_feature, user_emb_matrix, relation_emb_matrix):
     auc_list = []
     f1_list = []
     for pid in group_ids:
         start = 0
         data = np.array(data_multi_map[pid])
         while start + batch_size <= data.shape[0]:
-            feed_dict = construct_feed_dict(
-                multi_adj_entities[pid], multi_adj_relations[pid], data, start, start + batch_size, placeholders, multi_node_feature[pid])
+            feed_dict = construct_feed_dict(pid,
+                multi_adj_entities[pid], multi_adj_relations[pid], data, start, start + batch_size, placeholders, node_feature, user_emb_matrix, relation_emb_matrix)
             auc, f1 = model.eval(sess, feed_dict=feed_dict)
 
             auc_list.append(auc)

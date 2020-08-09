@@ -7,11 +7,11 @@ def load_data(args):
     n_user, n_item, train_data, eval_data, test_data = load_rating(args)
     # n_entity, n_relation, adj_entity, adj_relation = load_kg(args)
     n_entity, n_relation, adj_entity, idx_nodes, kg = load_kg(args)
-    node_feature = load_node_feature(args)
+    node_feature, user_emb_matrix, relation_emb_matrix = load_node_feature(args)
     print('data loaded.')
 
     return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes \
-        , kg, node_feature
+        , kg, node_feature, user_emb_matrix, relation_emb_matrix
 
 
 def load_rating(args):
@@ -126,4 +126,11 @@ def load_node_feature(args):
     print("loading node feature ...")
     feature_file = '../data/' + args.dataset + '/node_feature'
     feature_np = np.load(feature_file + '.npy')
-    return feature_np
+    print("loading user_emb_matrix ...")
+    user_file = '../data/' + args.dataset + '/user_emb_matrix'
+    user_np = np.load(user_file + '.npy')
+    print("loading node feature ...")
+    relation_file = '../data/' + args.dataset + '/relation_emb_matrix'
+    relation_np = np.load(relation_file + '.npy')
+
+    return feature_np, user_np, relation_np
