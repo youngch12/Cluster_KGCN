@@ -31,17 +31,13 @@ def train(args, data, show_loss, show_topk):
             t = time.time()
             np.random.shuffle(train_data)
             start = 0
-            i = 0
             # skip the last incomplete minibatch if its size < batch size
             while start + args.batch_size <= train_data.shape[0]:
                 _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size),
                                       run_options, run_metadata)
-                if i == 0:
-                    # 将本步搜集的统计数据添加到tfprofiler实例中
-                    profiler.add_step(step=step, run_meta=run_metadata)
+                profiler.add_step(step=step, run_meta=run_metadata)
 
                 start += args.batch_size
-                i += 1
                 if show_loss:
                     print(start, loss)
 
@@ -78,8 +74,8 @@ def train(args, data, show_loss, show_topk):
         profile_op_opt_builder.select(['micros', 'occurrence'])
         # 根据op执行时间进行显示结果排序
         profile_op_opt_builder.order_by('micros')
-        # 过滤条件：只显示排名top 5
-        profile_op_opt_builder.with_max_depth(4)
+        # 过滤条件：只显示排名top 7
+        profile_op_opt_builder.with_max_depth(6)
 
         # 显示视图为op view
         profiler.profile_operations(profile_op_opt_builder.build())
