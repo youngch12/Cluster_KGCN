@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 
 # movie
 parser.add_argument('--dataset', type=str, default='movie', help='which dataset to use')
-parser.add_argument('--aggregator', type=str, default='sum', help='which aggregator to use')
+parser.add_argument('--aggregator', type=str, default='concat', help='which aggregator to use')
 parser.add_argument('--n_epochs', type=int, default=10, help='the number of epochs')
 parser.add_argument('--neighbor_sample_size', type=int, default=8, help='the number of neighbors to be sampled')
 parser.add_argument('--dim', type=int, default=32, help='dimension of user and entity embeddings')
