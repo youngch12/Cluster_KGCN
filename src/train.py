@@ -31,19 +31,25 @@ def train(args, data, show_loss, show_topk):
         profiler = model_analyzer.Profiler(graph=sess.graph)
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         run_metadata = tf.RunMetadata()
+        # tensor-board
+        writer = tf.summary.FileWriter('../data/' + args.dataset + '/logs', tf.get_default_graph())
 
         for step in range(args.n_epochs):
             # training
             t = time.time()
             np.random.shuffle(train_data)
             start = 0
+            i = 0
             # skip the last incomplete mini-batch if its size < batch size
             while start + args.batch_size <= train_data.shape[0]:
+
                 _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size),
                                       run_options, run_metadata)
-                # 将本步搜集的统计数据添加到tfprofiler实例中
+                # add the data into tfprofiler
                 profiler.add_step(step=step, run_meta=run_metadata)
-
+                if i == 0:
+                    writer.add_run_metadata(run_metadata, 'step %d' % step)
+                i += 1
                 start += args.batch_size
                 # if show_loss:
                 #     print(start, loss)
@@ -72,15 +78,19 @@ def train(args, data, show_loss, show_topk):
         # the top 5 time-consuming ops
         profile_op_opt_builder = option_builder.ProfileOptionBuilder()
 
-        # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
+        # op running time
         profile_op_opt_builder.select(['micros', 'occurrence'])
-        # 根据op执行时间进行显示结果排序
+        # order by op running time
         profile_op_opt_builder.order_by('micros')
-        # 过滤条件：只显示排名top 7
+        # filter condition：show top 7
         profile_op_opt_builder.with_max_depth(6)
 
-        # 显示视图为op view
+        # op view
         profiler.profile_operations(profile_op_opt_builder.build())
+
+        # ------------------------------------
+
+        writer.close()
 
 
 def topk_settings(show_topk, train_data, test_data, n_item):

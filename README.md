@@ -67,3 +67,6 @@ KGCN is **K**nowledge **G**raph **C**onvolutional **N**etworks for recommender s
   - ```
     $ python3 main.py
     ```
+
+
+tensorboard --logdir logs
