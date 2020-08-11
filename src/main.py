@@ -57,6 +57,7 @@ show_topk = False
 t = time()
 
 args = parser.parse_args()
+print("args:", args)
 data = load_data(args)
 train(args, data, show_loss, show_topk)
 
