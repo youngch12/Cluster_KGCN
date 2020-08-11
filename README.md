@@ -70,3 +70,5 @@ KGCN is **K**nowledge **G**raph **C**onvolutional **N**etworks for recommender s
 
 
 tensorboard --logdir logs
+
+tensorboard --logdir output
