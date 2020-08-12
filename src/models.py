@@ -129,7 +129,9 @@ class Model(object):
     #     return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=
 
     def train(self, sess, feed_dict):
-        return sess.run([self.opt_op, self.loss], feed_dict)
+        sess.run([self.opt_op, self.loss], feed_dict)
+        return self.entity_emb_matrix
+
 
     def eval(self, sess, feed_dict):
         labels, scores = sess.run([self.labels, self.scores_normalized], feed_dict)
@@ -163,7 +165,7 @@ class KGCN(Model):
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
     self.labels = placeholders['labels']
-    pid = placeholders['pid'].get_shape().as_list()[0]
+    # pid = placeholders['pid'].get_shape().as_list()[0]
 
 
 
