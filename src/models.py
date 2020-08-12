@@ -122,11 +122,11 @@ class Model(object):
 
         self.opt_op = self.optimizer.minimize(self.loss)
 
-    # def train(self, sess, feed_dict, run_options, run_metadata):
-    #     return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=
+    def train(self, sess, feed_dict, run_options, run_metadata):
+        return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=run_metadata)
 
-    def train(self, sess, feed_dict):
-        return sess.run([self.opt_op, self.loss], feed_dict)
+    # def train(self, sess, feed_dict):
+    #     return sess.run([self.opt_op, self.loss], feed_dict)
 
     def eval(self, sess, feed_dict):
         labels, scores = sess.run([self.labels, self.scores_normalized], feed_dict)

@@ -53,7 +53,7 @@ def partition_graph(adj, idx_nodes, num_clusters):
 
 def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                             num_clusters, block_size, neighbor_sample_size,
-                            train_data, eval_data, test_data, node_feature):
+                            train_data, eval_data, test_data):
     """Generate the batch for multiple clusters."""
 
     start_time = time.time()
@@ -74,7 +74,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
 
     multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
     multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
-    multi_node_feature = [[] for i in range(math.ceil(num_clusters / block_size))]
 
     train_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
     eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
@@ -92,7 +91,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         gp_idx = groups[nd_idx]
         nd_orig_idx = idx_nodes[nd_idx]
         map_id = multi_parts_map[gp_idx]
-        multi_node_feature[map_id].append(node_feature[nd_orig_idx])
 
         # partition train_data
         tri_del_idx = []
@@ -178,4 +176,4 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('train_multi_map_idx:', train_multi_map_idx)
 
-    return multi_node_feature, multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map
+    return multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map
