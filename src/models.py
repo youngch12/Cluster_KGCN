@@ -151,7 +151,6 @@ class KGCN(Model):
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
     self.labels = placeholders['labels']
-    self.entity_emb_matrix = placeholders['entity_emb_matrix']
 
     self.optimizer = tf.train.AdamOptimizer(args.lr)
     self.placeholders = placeholders
