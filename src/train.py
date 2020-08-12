@@ -62,6 +62,7 @@ def train(args, data, show_loss, show_topk):
         for step in range(args.n_epochs):
             # training
             t = time.time()
+            i = 0
             np.random.shuffle(group_ids)
             for pid in group_ids:
                 start = 0
@@ -76,8 +77,9 @@ def train(args, data, show_loss, show_topk):
                     _, loss = model.train(sess, feed_dict, run_options, run_metadata)
                     # # 将本步搜集的统计数据添加到tfprofiler实例中
                     profiler.add_step(step=step, run_meta=run_metadata)
-                    if start == 0:
+                    if i == 0:
                         writer.add_run_metadata(run_metadata, 'step %d' % step)
+                    i += 1
                     start += args.batch_size
                     if show_loss:
                         print(start, loss)
@@ -113,7 +115,7 @@ def train(args, data, show_loss, show_topk):
         # 根据op执行时间进行显示结果排序
         profile_op_opt_builder.order_by('micros')
         # 过滤条件：只显示排名top 5
-        profile_op_opt_builder.with_max_depth(4)
+        profile_op_opt_builder.with_max_depth(6)
 
         # 显示视图为op view
         profiler.profile_operations(profile_op_opt_builder.build())
@@ -156,7 +158,7 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
 
 
 def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_map, batch_size, group_ids,
-             placeholders, multi_node_feature):
+             placeholders):
     auc_list = []
     f1_list = []
     for pid in group_ids:
