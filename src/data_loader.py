@@ -1,17 +1,17 @@
 import numpy as np
 import os
 import scipy.sparse as sp
+import argparse
 
 
 def load_data(args):
     n_user, n_item, train_data, eval_data, test_data = load_rating(args)
-    # n_entity, n_relation, adj_entity, adj_relation = load_kg(args)
     n_entity, n_relation, adj_entity, idx_nodes, kg = load_kg(args)
-    node_feature, user_emb_matrix, relation_emb_matrix = load_node_feature(args)
+    node_feature = load_node_feature(args)
     print('data loaded.')
 
-    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes \
-        , kg, node_feature, user_emb_matrix, relation_emb_matrix
+    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes, kg\
+        , node_feature
 
 
 def load_rating(args):
@@ -51,6 +51,10 @@ def dataset_split(rating_np, args):
     eval_data = rating_np[eval_indices]
     test_data = rating_np[test_indices]
 
+    train_data = sort_data(train_data)
+    eval_data = sort_data(eval_data)
+    test_data = sort_data(test_data)
+
     return train_data, eval_data, test_data
 
 
@@ -69,7 +73,6 @@ def load_kg(args):
     n_relation = len(set(kg_np[:, 1]))
 
     kg, edges, idx_nodes = construct_kg(kg_np)
-    # adj_entity, adj_relation = construct_adj(args, kg, edges, n_entity)
     adj_entity = construct_adj_entity(edges, n_entity)
 
     return n_entity, n_relation, adj_entity, idx_nodes, kg  # , adj_relation
@@ -85,13 +88,7 @@ def construct_kg(kg_np):
         relation = triple[1]
         tail = triple[2]
         edges.append((head, relation, tail))
-        # # treat the KG as an undirected graph
-        # if head not in kg:
-        #     kg[head] = []
-        # kg[head].append((tail, relation))
-        # if tail not in kg:
-        #     kg[tail] = []
-        # kg[tail].append((head, relation))
+
         key_a = str(head) + "_" + str(tail)
         key_b = str(tail) + "_" + str(head)
         if key_a not in kg:
@@ -106,6 +103,7 @@ def construct_kg(kg_np):
         if tail not in idx_nodes:
             idx_nodes.append(tail)
     edges = np.array(edges, dtype=np.int32)
+    idx_nodes = np.sort(idx_nodes)
     return kg, edges, idx_nodes
 
 
@@ -126,11 +124,36 @@ def load_node_feature(args):
     print("loading node feature ...")
     feature_file = '../data/' + args.dataset + '/node_feature'
     feature_np = np.load(feature_file + '.npy')
-    print("loading user_emb_matrix ...")
-    user_file = '../data/' + args.dataset + '/user_emb_matrix'
-    user_np = np.load(user_file + '.npy')
-    print("loading node feature ...")
-    relation_file = '../data/' + args.dataset + '/relation_emb_matrix'
-    relation_np = np.load(relation_file + '.npy')
+    # print("loading user_emb_matrix ...")
+    # user_file = '../data/' + args.dataset + '/user_emb_matrix'
+    # user_np = np.load(user_file + '.npy')
+    # print("loading node feature ...")
+    # relation_file = '../data/' + args.dataset + '/relation_emb_matrix'
+    # relation_np = np.load(relation_file + '.npy')
 
-    return feature_np, user_np, relation_np
+    return feature_np
+
+
+# order by item
+def sort_data(data):
+    return data[data[:, 1].argsort()]
+
+
+#
+# if __name__ == '__main__':
+#     np.random.seed(555)
+#
+#     parser = argparse.ArgumentParser()
+#     # parser.add_argument('-d', type=str, default='music', help='which dataset to preprocess')
+#     # parser.add_argument('-ratio', type=float, default=1, help='size of training dataset')
+#
+#     parser.add_argument('--dataset', type=str, default='movie', help='which dataset to use')
+#     parser.add_argument('--ratio', type=float, default=1, help='size of training dataset')
+#
+#     args = parser.parse_args()
+#     data = load_data(args)
+#     # train_data, eval_data, test_data = data[4], data[5], data[6]
+#
+#     # sort_data(train_data)
+#
+#     print('done!!!')

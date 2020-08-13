@@ -14,7 +14,7 @@ def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
     train_data, eval_data, test_data = data[4], data[5], data[6]
     adj, idx_nodes, kg = data[7], data[8], data[9]
-    node_feature, user_emb_matrix, relation_emb_matrix = data[10], data[11], data[12]
+    node_feature = data[10]
 
     groups, train_ord_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
     # pre-process multi-clusters

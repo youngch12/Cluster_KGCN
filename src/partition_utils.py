@@ -99,6 +99,8 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         train_map_idx = train_multi_map_idx[map_id]
         for i in range(len(train_data)):
             tr_data = np.array(train_data[i]).tolist()
+            if nd_orig_idx > tr_data[1]:
+                break
             # item == entity
             if tr_data[1] == nd_orig_idx:
                 # tr_data.append(train_multi_map_idx[map_id])
@@ -113,6 +115,8 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         eval_map_idx = eval_multi_map_idx[map_id]
         for i in range(len(eval_data)):
             ev_data = np.array(eval_data[i]).tolist()
+            if nd_orig_idx > ev_data[1]:
+                break
             # item == entity
             if ev_data[1] == nd_orig_idx:
                 # ev_data.append(eval_multi_map_idx[map_id])
@@ -127,6 +131,8 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         test_map_idx = test_multi_map_idx[map_id]
         for i in range(len(test_data)):
             te_data = np.array(test_data[i]).tolist()
+            if nd_orig_idx > te_data[1]:
+                break
             # item == entity
             if te_data[1] == nd_orig_idx:
                 # te_data.append(test_multi_map_idx[map_id])

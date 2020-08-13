@@ -79,7 +79,6 @@ def load_node_feature():
     feature_np = np.load(rating_file + '.npy')
 
 
-
 if __name__ == '__main__':
     np.random.seed(555)
 
