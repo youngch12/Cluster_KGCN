@@ -82,32 +82,6 @@ def train(args, data, show_loss, show_topk):
                 np.random.shuffle(train_data)
                 # skip the last incomplete mini-batch if its size < batch size
                 while start + args.batch_size <= train_data.shape[0]:
-                    # if start == 0:
-                    #     print("start:", start)
-                    #     # print("entity_emb_matrix:", entity_emb_matrix)
-                    #     print("entity_emb_matrix.type:", type(node_feature))
-                    #     feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
-                    #                                     start, start + args.batch_size, placeholders, node_feature)
-                    #     new_node_feature = model.train(sess, feed_dict)
-                    #     # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
-                    #     node_feature = new_node_feature
-                    #     print("entity_emb_matrix.type:", type(node_feature))
-                    # else:
-                    #     print("start:", start)
-                    #     print("SSS,entity_emb_matrix.type:", type(node_feature))
-                    #     # node_feature = sess.run(node_feature)
-                    #     node_feature = node_feature.eval()
-                    #     print("EEE,entity_emb_matrix.type:", type(node_feature))
-                    #
-                    #     feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid],
-                    #                                     train_data,
-                    #                                     start, start + args.batch_size, placeholders, node_feature)
-                    #     new_node_feature = model.train(sess, feed_dict)
-                    #     # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
-                    #     node_feature = new_node_feature
-                    #     print("entity_emb_matrix.type:", type(node_feature))
-                    # print("entity_emb_matrix:", entity_emb_matrix)
-
                     feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
                                                     start, start + args.batch_size, placeholders, node_feature)
                     # _, loss = model.train(sess, feed_dict)
@@ -188,11 +162,12 @@ def get_feed_dict(model, data, start, end):
 def construct_feed_dict(pid, adj_entity, adj_relation, data, start, end, placeholders, node_feature):
     """Construct feed dictionary."""
     feed_dict = dict()
-    # feed_dict.update({placeholders['pid']: np.ones(pid)})
+    n_entity = len(adj_entity)
     feed_dict.update({placeholders['adj_entity']: adj_entity})
     feed_dict.update({placeholders['adj_relation']: adj_relation})
     feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
-    feed_dict.update({placeholders['item_indices']: data[start:end, 3]})
+    sampled_indices = np.random.choice(list(range(n_entity)), size=(end-start), replace=True)
+    feed_dict.update({placeholders['item_indices']: sampled_indices})
     feed_dict.update({placeholders['labels']: data[start:end, 2]})
     feed_dict.update({placeholders['entity_emb_matrix']: node_feature})
 
