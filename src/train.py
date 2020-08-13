@@ -62,16 +62,19 @@ def train(args, data, show_loss, show_topk):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         # # monitor the usage of memory while training the model
-        # profiler = model_analyzer.Profiler(graph=sess.graph)
-        # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        # run_metadata = tf.RunMetadata()
+        profiler = model_analyzer.Profiler(graph=sess.graph)
+        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
+        # tensor-board
+        writer = tf.summary.FileWriter('../data/' + args.dataset + '/logs', tf.get_default_graph())
 
-        trained_embedding_dict = dict()
+        # trained_embedding_dict = dict()
 
         for step in range(args.n_epochs):
             # training
             t = time.time()
             np.random.shuffle(group_ids)
+            i = 0
             for pid in group_ids:
                 start = 0
                 train_data = np.array(train_data_multi_map[pid])
@@ -79,72 +82,85 @@ def train(args, data, show_loss, show_topk):
                 np.random.shuffle(train_data)
                 # skip the last incomplete mini-batch if its size < batch size
                 while start + args.batch_size <= train_data.shape[0]:
-                    if start == 0:
-                        print("start:", start)
-                        # print("entity_emb_matrix:", entity_emb_matrix)
-                        print("entity_emb_matrix.type:", type(node_feature))
-                        feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
-                                                        start, start + args.batch_size, placeholders, node_feature)
-                        new_node_feature = model.train(sess, feed_dict)
-                        # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
-                        node_feature = new_node_feature
-                        print("entity_emb_matrix.type:", type(node_feature))
-                    else:
-                        print("start:", start)
-                        print("SSS,entity_emb_matrix.type:", type(node_feature))
-                        # node_feature = sess.run(node_feature)
-                        node_feature = node_feature.eval()
-                        print("EEE,entity_emb_matrix.type:", type(node_feature))
+                    # if start == 0:
+                    #     print("start:", start)
+                    #     # print("entity_emb_matrix:", entity_emb_matrix)
+                    #     print("entity_emb_matrix.type:", type(node_feature))
+                    #     feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
+                    #                                     start, start + args.batch_size, placeholders, node_feature)
+                    #     new_node_feature = model.train(sess, feed_dict)
+                    #     # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
+                    #     node_feature = new_node_feature
+                    #     print("entity_emb_matrix.type:", type(node_feature))
+                    # else:
+                    #     print("start:", start)
+                    #     print("SSS,entity_emb_matrix.type:", type(node_feature))
+                    #     # node_feature = sess.run(node_feature)
+                    #     node_feature = node_feature.eval()
+                    #     print("EEE,entity_emb_matrix.type:", type(node_feature))
+                    #
+                    #     feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid],
+                    #                                     train_data,
+                    #                                     start, start + args.batch_size, placeholders, node_feature)
+                    #     new_node_feature = model.train(sess, feed_dict)
+                    #     # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
+                    #     node_feature = new_node_feature
+                    #     print("entity_emb_matrix.type:", type(node_feature))
+                    # print("entity_emb_matrix:", entity_emb_matrix)
 
-                        feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid],
-                                                        train_data,
-                                                        start, start + args.batch_size, placeholders, node_feature)
-                        new_node_feature = model.train(sess, feed_dict)
-                        # print("entity_emb_matrix.shape:", entity_emb_matrix.shape)
-                        node_feature = new_node_feature
-                        print("entity_emb_matrix.type:", type(node_feature))
-                    # _, loss = model.train(sess, feed_dict, run_options, run_metadata)
+                    feed_dict = construct_feed_dict(pid, multi_adj_entities[pid], multi_adj_relations[pid], train_data,
+                                                    start, start + args.batch_size, placeholders, node_feature)
+                    # _, loss = model.train(sess, feed_dict)
+
+                    _, loss = model.train(sess, feed_dict, run_options, run_metadata)
                     # # 将本步搜集的统计数据添加到tfprofiler实例中
-                    # profiler.add_step(step=step, run_meta=run_metadata)
+                    profiler.add_step(step=step, run_meta=run_metadata)
+                    if i == 0:
+                        writer.add_run_metadata(run_metadata, 'step %d' % step)
+                    i += 1
                     start += args.batch_size
 
-                trained_embedding_dict[pid] = entity_emb_matrix
+                # trained_embedding_dict[pid] = entity_emb_matrix
 
                 # CTR evaluation
             train_auc, train_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, train_data_multi_map,
-                                           args.batch_size, group_ids, placeholders, trained_embedding_dict)
+                                           args.batch_size, group_ids, placeholders, multi_node_feature)
             eval_auc, eval_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, eval_data_multi_map,
-                                         args.batch_size, group_ids, placeholders, trained_embedding_dict)
+                                         args.batch_size, group_ids, placeholders, multi_node_feature)
             test_auc, test_f1 = ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, test_data_multi_map,
-                                         args.batch_size, group_ids, placeholders, trained_embedding_dict)
+                                         args.batch_size, group_ids, placeholders, multi_node_feature)
             train_time = time.time() - t
             print(
                 'epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
                 % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
-        # # # 统计模型的memory使用大小
-        # profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
-        #     option_builder.ProfileOptionBuilder.trainable_variables_parameter())
-        # # 显示字段是params，即参数
-        # profile_scope_opt_builder.select(['params'])
-        # # 根据params数量进行显示结果排序
-        # profile_scope_opt_builder.order_by('params')
-        # # 显示视图为scope view
-        # profiler.profile_name_scope(profile_scope_opt_builder.build())
-        #
-        # # ------------------------------------
-        # # 最耗时top 5 ops
-        # profile_op_opt_builder = option_builder.ProfileOptionBuilder()
-        #
-        # # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
-        # profile_op_opt_builder.select(['micros', 'occurrence'])
-        # # 根据op执行时间进行显示结果排序
-        # profile_op_opt_builder.order_by('micros')
-        # # 过滤条件：只显示排名top 5
-        # profile_op_opt_builder.with_max_depth(4)
-        #
-        # # 显示视图为op view
-        # profiler.profile_operations(profile_op_opt_builder.build())
+        # # 统计模型的memory使用大小
+        profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
+            option_builder.ProfileOptionBuilder.trainable_variables_parameter())
+        # 显示字段是params，即参数
+        profile_scope_opt_builder.select(['params'])
+        # 根据params数量进行显示结果排序
+        profile_scope_opt_builder.order_by('params')
+        # 显示视图为scope view
+        profiler.profile_name_scope(profile_scope_opt_builder.build())
+
+        # ------------------------------------
+        # 最耗时top 5 ops
+        profile_op_opt_builder = option_builder.ProfileOptionBuilder()
+
+        # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
+        profile_op_opt_builder.select(['micros', 'occurrence'])
+        # 根据op执行时间进行显示结果排序
+        profile_op_opt_builder.order_by('micros')
+        # 过滤条件：只显示排名top 5
+        profile_op_opt_builder.with_max_depth(6)
+
+        # 显示视图为op view
+        profiler.profile_operations(profile_op_opt_builder.build())
+
+        # ------------------------------------
+
+        writer.close()
 
 
 def topk_settings(show_topk, train_data, test_data, n_item):
@@ -184,7 +200,7 @@ def construct_feed_dict(pid, adj_entity, adj_relation, data, start, end, placeho
 
 
 def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_map, batch_size, group_ids,
-             placeholders, trained_embedding_dict):
+             placeholders, multi_node_feature):
     auc_list = []
     f1_list = []
     for pid in group_ids:
@@ -193,7 +209,7 @@ def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_ma
         while start + batch_size <= data.shape[0]:
             feed_dict = construct_feed_dict(pid,
                                             multi_adj_entities[pid], multi_adj_relations[pid], data, start,
-                                            start + batch_size, placeholders, trained_embedding_dict[pid])
+                                            start + batch_size, placeholders, multi_node_feature[pid])
             auc, f1 = model.eval(sess, feed_dict=feed_dict)
 
             auc_list.append(auc)
