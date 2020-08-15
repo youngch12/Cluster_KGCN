@@ -76,14 +76,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
     multi_node_feature = [[] for i in range(math.ceil(num_clusters / block_size))]
 
-    # train_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
-    # eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
-    # test_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
-
-    train_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
-    eval_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
-    test_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
-
     for nd_idx in range(num_nodes):
         count = 0
         times = 0
@@ -93,54 +85,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         nd_orig_idx = idx_nodes[nd_idx]
         map_id = multi_parts_map[gp_idx]
         multi_node_feature[map_id].append(node_feature[nd_orig_idx])
-
-        # # partition train_data
-        # tri_del_idx = []
-        # train_map_idx = train_multi_map_idx[map_id]
-        # for i in range(len(train_data)):
-        #     tr_data = np.array(train_data[i]).tolist()
-        #     if nd_orig_idx > tr_data[1]:
-        #         break
-        #     # item == entity
-        #     if tr_data[1] == nd_orig_idx:
-        #         # tr_data.append(train_multi_map_idx[map_id])
-        #         tr_data = np.append(tr_data, train_map_idx)
-        #         train_data_multi_map[map_id].append(np.array(tr_data))
-        #         tri_del_idx.append(i)
-        # train_data = np.delete(train_data, tri_del_idx, axis=0)
-        # train_multi_map_idx[map_id] += 1
-        #
-        # # partition eval_data
-        # ev_del_idx = []
-        # eval_map_idx = eval_multi_map_idx[map_id]
-        # for i in range(len(eval_data)):
-        #     ev_data = np.array(eval_data[i]).tolist()
-        #     if nd_orig_idx > ev_data[1]:
-        #         break
-        #     # item == entity
-        #     if ev_data[1] == nd_orig_idx:
-        #         # ev_data.append(eval_multi_map_idx[map_id])
-        #         ev_data = np.append(ev_data, eval_map_idx)
-        #         eval_data_multi_map[map_id].append(np.array(ev_data))
-        #         ev_del_idx.append(i)
-        # eval_data = np.delete(eval_data, ev_del_idx, axis=0)
-        # eval_multi_map_idx[map_id] += 1
-        #
-        # # partition test_data
-        # te_del_idx = []
-        # test_map_idx = test_multi_map_idx[map_id]
-        # for i in range(len(test_data)):
-        #     te_data = np.array(test_data[i]).tolist()
-        #     if nd_orig_idx > te_data[1]:
-        #         break
-        #     # item == entity
-        #     if te_data[1] == nd_orig_idx:
-        #         # te_data.append(test_multi_map_idx[map_id])
-        #         te_data = np.append(te_data, test_map_idx)
-        #         test_data_multi_map[map_id].append(np.array(te_data))
-        #         te_del_idx.append(i)
-        # test_data = np.delete(test_data, te_del_idx, axis=0)
-        # test_multi_map_idx[map_id] += 1
 
         multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
         new_entity_id_dict = dict()
