@@ -53,7 +53,9 @@ def partition_graph(adj, idx_nodes, num_clusters):
 
 def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                             num_clusters, block_size, neighbor_sample_size,
-                            train_data, eval_data, test_data):
+                            train_data, eval_data, test_data,
+                            train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict,
+                            train_item_next_dict, eval_item_next_dict, test_item_next_dict):
     """Generate the batch for multiple clusters."""
 
     start_time = time.time()
@@ -83,6 +85,7 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     eval_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
     test_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
 
+
     for nd_idx in range(num_nodes):
         count = 0
         times = 0
@@ -93,46 +96,61 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         map_id = multi_parts_map[gp_idx]
 
         # partition train_data
-        tri_del_idx = []
         train_map_idx = train_multi_map_idx[map_id]
-        for i in range(len(train_data)):
-            tr_data = np.array(train_data[i]).tolist()
-            # item == entity
-            if tr_data[1] == nd_orig_idx:
-                # tr_data.append(train_multi_map_idx[map_id])
-                tr_data = np.append(tr_data, train_map_idx)
-                train_data_multi_map[map_id].append(np.array(tr_data))
-                tri_del_idx.append(i)
-        train_data = np.delete(train_data, tri_del_idx, axis=0)
-        train_multi_map_idx[map_id] += 1
+        if nd_orig_idx in train_item_idx_dict:
+            nd_item_idx = train_item_idx_dict[nd_orig_idx]
+            if nd_orig_idx in train_item_next_dict:
+                nd_next_item_id = train_item_next_dict[nd_orig_idx]
+                nd_next_item_idx = train_item_idx_dict[nd_next_item_id]
+                temp_list = train_data[nd_item_idx:nd_next_item_idx]
+            else:
+                temp_list = train_data[nd_item_idx:]
+
+            y = [[train_map_idx]] * len(temp_list)
+            temp_list = np.concatenate((temp_list, y), axis=1)
+            if len(train_data_multi_map[map_id]) == 0:
+                train_data_multi_map[map_id] = temp_list
+            else:
+                train_data_multi_map[map_id] = np.concatenate((train_data_multi_map[map_id], temp_list))
+            train_multi_map_idx[map_id] += 1
 
         # partition eval_data
-        ev_del_idx = []
         eval_map_idx = eval_multi_map_idx[map_id]
-        for i in range(len(eval_data)):
-            ev_data = np.array(eval_data[i]).tolist()
-            # item == entity
-            if ev_data[1] == nd_orig_idx:
-                # ev_data.append(eval_multi_map_idx[map_id])
-                ev_data = np.append(ev_data, eval_map_idx)
-                eval_data_multi_map[map_id].append(np.array(ev_data))
-                ev_del_idx.append(i)
-        eval_data = np.delete(eval_data, ev_del_idx, axis=0)
-        eval_multi_map_idx[map_id] += 1
+        if nd_orig_idx in eval_item_idx_dict:
+            nd_item_idx = eval_item_idx_dict[nd_orig_idx]
+            if nd_orig_idx in eval_item_next_dict:
+                nd_next_item_id = eval_item_next_dict[nd_orig_idx]
+                nd_next_item_idx = eval_item_idx_dict[nd_next_item_id]
+                temp_list = eval_data[nd_item_idx:nd_next_item_idx]
+            else:
+                temp_list = eval_data[nd_item_idx:]
+
+            y = [[eval_map_idx]] * len(temp_list)
+            temp_list = np.concatenate((temp_list, y), axis=1)
+            if len(eval_data_multi_map[map_id]) == 0:
+                eval_data_multi_map[map_id] = temp_list
+            else:
+                eval_data_multi_map[map_id] = np.concatenate((eval_data_multi_map[map_id], temp_list))
+            eval_multi_map_idx[map_id] += 1
 
         # partition test_data
-        te_del_idx = []
         test_map_idx = test_multi_map_idx[map_id]
-        for i in range(len(test_data)):
-            te_data = np.array(test_data[i]).tolist()
-            # item == entity
-            if te_data[1] == nd_orig_idx:
-                # te_data.append(test_multi_map_idx[map_id])
-                te_data = np.append(te_data, test_map_idx)
-                test_data_multi_map[map_id].append(np.array(te_data))
-                te_del_idx.append(i)
-        test_data = np.delete(test_data, te_del_idx, axis=0)
-        test_multi_map_idx[map_id] += 1
+        if nd_orig_idx in test_item_idx_dict:
+            nd_item_idx = test_item_idx_dict[nd_orig_idx]
+            if nd_orig_idx in test_item_next_dict:
+                nd_next_item_id = test_item_next_dict[nd_orig_idx]
+                nd_next_item_idx = test_item_idx_dict[nd_next_item_id]
+                temp_list = test_data[nd_item_idx:nd_next_item_idx]
+            else:
+                temp_list = test_data[nd_item_idx:]
+
+            y = [[test_map_idx]] * len(temp_list)
+            temp_list = np.concatenate((temp_list, y), axis=1)
+            if len(test_data_multi_map[map_id]) == 0:
+                test_data_multi_map[map_id] = temp_list
+            else:
+                test_data_multi_map[map_id] = np.concatenate((test_data_multi_map[map_id], temp_list))
+            test_multi_map_idx[map_id] += 1
 
         multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
         new_entity_id_dict = dict()
