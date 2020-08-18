@@ -25,6 +25,8 @@ def train(args, data, show_loss, show_topk):
         profiler = model_analyzer.Profiler(graph=sess.graph)
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         run_metadata = tf.RunMetadata()
+        # tensor-board
+        writer = tf.summary.FileWriter('../data/' + args.dataset + '/logs', tf.get_default_graph())
 
         for step in range(args.n_epochs):
             # training
@@ -36,29 +38,29 @@ def train(args, data, show_loss, show_topk):
             while start + args.batch_size <= train_data.shape[0]:
                 _, loss = model.train(sess, get_feed_dict(model, train_data, start, start + args.batch_size),
                                       run_options, run_metadata)
+                # add the data into tfprofiler
+                profiler.add_step(step=step, run_meta=run_metadata)
                 if i == 0:
-                    # 将本步搜集的统计数据添加到tfprofiler实例中
-                    profiler.add_step(step=step, run_meta=run_metadata)
-
-                start += args.batch_size
+                    writer.add_run_metadata(run_metadata, 'step %d' % step)
                 i += 1
-                if show_loss:
-                    print(start, loss)
+                start += args.batch_size
+                # if show_loss:
+                #     print(start, loss)
 
             # CTR evaluation
             train_auc, train_f1 = ctr_eval(sess, model, train_data, args.batch_size)
             eval_auc, eval_f1 = ctr_eval(sess, model, eval_data, args.batch_size)
             test_auc, test_f1 = ctr_eval(sess, model, test_data, args.batch_size)
 
-            values = ps.virtual_memory()
-            used_memory = values.used / (1024.0 ** 3)
+            # values = ps.virtual_memory()
+            # used_memory = values.used / (1024.0 ** 3)
             train_time = time.time() - t
 
             # print('epoch %d    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
             #       % (step, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
             print(
-                'epoch %d   training time: %.5f   used_memory: %.5f    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
-                % (step, train_time, used_memory, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
+                'epoch %d   training time: %.5f    train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
+                % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
         # # 统计模型的memory使用大小
         profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
@@ -78,11 +80,14 @@ def train(args, data, show_loss, show_topk):
         profile_op_opt_builder.select(['micros', 'occurrence'])
         # 根据op执行时间进行显示结果排序
         profile_op_opt_builder.order_by('micros')
-        # 过滤条件：只显示排名top 5
-        profile_op_opt_builder.with_max_depth(4)
+        # 过滤条件：只显示排名top 7
+        profile_op_opt_builder.with_max_depth(6)
 
         # 显示视图为op view
         profiler.profile_operations(profile_op_opt_builder.build())
+
+        # ------------------------------------
+        writer.close()
 
 
 def topk_settings(show_topk, train_data, test_data, n_item):
