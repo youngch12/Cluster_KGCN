@@ -78,6 +78,10 @@ class Model(object):
         entities = [seeds]
         relations = []
         for i in range(self.n_iter):
+            # neighbor_entities = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_entity, self.entity_emb_matrix),
+            #                               [self.batch_size, -1])
+            # neighbor_relations = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_relation, self.relation_emb_matrix),
+            #                                 [self.batch_size, -1])
             neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
             neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
             entities.append(neighbor_entities)
@@ -89,6 +93,11 @@ class Model(object):
         entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in entities]
         relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
 
+        # entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in item_indices]
+        # # relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
+        # relation_vectors = tf.sparse_tensor_dense_matmul(adj_relation, self.relation_emb_matrix)
+        # neighbor_vectors = tf.sparse_tensor_dense_matmul(adj_entity, self.entity_emb_matri)
+
         for i in range(self.n_iter):
             if i == self.n_iter - 1:
                 aggregator = self.aggregator_class(self.batch_size, self.dim, act=tf.nn.tanh)
@@ -98,7 +107,7 @@ class Model(object):
 
             entity_vectors_next_iter = []
             for hop in range(self.n_iter - i):
-                shape = [self.batch_size, -1, self.n_neighbor, self.dim]
+                shape = [self.batch_size, -1, self.dim]
                 vector = aggregator(self_vectors=entity_vectors[hop],
                                     neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
                                     neighbor_relations=tf.reshape(relation_vectors[hop], shape),

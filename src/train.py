@@ -12,17 +12,17 @@ from tensorflow.python.profiler import option_builder
 def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
     train_data, eval_data, test_data = data[4], data[5], data[6]
-    adj, idx_nodes, kg = data[7], data[8], data[9]
-    train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict = data[10], data[11], data[12]
-    train_item_next_dict, eval_item_next_dict, test_item_next_dict = data[13], data[14], data[15]
+    adj_entity, adj_relation, idx_nodes, kg = data[7], data[8], data[9], data[10]
+    train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict = data[11], data[12], data[13]
+    train_item_next_dict, eval_item_next_dict, test_item_next_dict = data[14], data[15], data[16]
 
-    groups, train_ord_map = partition_utils.partition_graph(adj, idx_nodes, args.num_clusters)
+    groups, train_ord_map = partition_utils.partition_graph(adj_entity, idx_nodes, args.num_clusters)
 
     # pre-process multi-clusters
     group_ids = list(range(math.ceil(args.num_clusters / args.block_size)))
     # args.batch_size = math.ceil(args.batch_size / len(group_ids))
     multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map = \
-        partition_utils.preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map, args.num_clusters,
+        partition_utils.preprocess_multicluster(adj_entity, adj_relation, kg, idx_nodes, groups, train_ord_map, args.num_clusters,
                                                 args.block_size, args.neighbor_sample_size,
                                                 train_data, eval_data, test_data,
                                                 train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict,

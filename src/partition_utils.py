@@ -18,6 +18,7 @@
 import time
 import metis
 import numpy as np
+import scipy.sparse as sp
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import math
@@ -51,7 +52,7 @@ def partition_graph(adj, idx_nodes, num_clusters):
     return groups, train_ord_map #, parts
 
 
-def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
+def preprocess_multicluster(adj_entity, adj_relation, kg, idx_nodes, groups, train_ord_map,
                             num_clusters, block_size, neighbor_sample_size,
                             train_data, eval_data, test_data,
                             train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict,
@@ -65,17 +66,31 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     multi_parts_map = dict()
 
     np.random.shuffle(group_ids)
+    np.random.shuffle(groups)
+    multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
+    multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
+
     map_id = 0
     for _, st in enumerate(range(0, num_clusters, block_size)):
         group_id = group_ids[st]
+        pt = np.array(group_id)
         multi_parts_map[group_id] = map_id
         for pt_idx in range(st + 1, min(st + block_size, num_clusters)):
             group_id = group_ids[pt_idx]
             multi_parts_map[group_id] = map_id
-        map_id += 1
+            pt = np.append(pt, group_id)
+        print("pt:", pt)
+        git push --set-upstream origin dev_sparse = adj_entity[pt, :][:, pt]
+        print("adj_e.shape:", adj_e.todense().shape)
+        multi_adj_entities[map_id].append(adj_e.todense())
 
-    multi_adj_entities = [[] for i in range(math.ceil(num_clusters / block_size))]
-    multi_adj_relations = [[] for i in range(math.ceil(num_clusters / block_size))]
+        # multi_adj_entities[map_id].append(sparse_to_tuple(adj_e))
+        adj_r = adj_relation[pt, :][:, pt]
+        print("adj_r.shape:", adj_r.todense().shape)
+        multi_adj_relations[map_id].append(adj_r.todense())
+
+        # multi_adj_relations[map_id].append(sparse_to_tuple(adj_r))
+        map_id += 1
 
     train_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
     eval_data_multi_map = [[] for i in range(math.ceil(num_clusters / block_size))]
@@ -85,14 +100,12 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     eval_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
     test_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
 
-
     for nd_idx in range(num_nodes):
-        count = 0
-        times = 0
         adj_entities = []
         adj_relations = []
         gp_idx = groups[nd_idx]
         nd_orig_idx = idx_nodes[nd_idx]
+
         map_id = multi_parts_map[gp_idx]
 
         # partition train_data
@@ -152,46 +165,66 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                 test_data_multi_map[map_id] = np.concatenate((test_data_multi_map[map_id], temp_list))
             test_multi_map_idx[map_id] += 1
 
-        multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
-        new_entity_id_dict = dict()
-        for nb_orig_idx in adj[nd_orig_idx].indices:
-            nb_idx = train_ord_map[nb_orig_idx]
-            nb_gp_idx = groups[nb_idx]
-            # if a node's neighbor and this node are still in the same concated sub-graph
-            if multi_parts_map[nb_gp_idx] == map_id:
-                relation_times = adj[nd_orig_idx].data[count]
-                key = str(nd_orig_idx) + "_" + str(nb_orig_idx)
-                new_entity_id_key = str(map_id) + "_" + str(nb_orig_idx)
-                if new_entity_id_key in new_entity_id_dict:
-                    new_entity_id = new_entity_id_dict[new_entity_id_key]
-                else:
-                    new_entity_id = multi_map_idx[map_id]
-                    new_entity_id_dict[new_entity_id_key] = new_entity_id
-                    multi_map_idx[map_id] += 1
-                for i in range(relation_times):
-                    # adj_entities.append(nb_orig_idx)
-                    adj_entities.append(new_entity_id)
-                    adj_relations.append(kg[key][i])
-                    times += 1
-            count += 1
+        # multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
+        # new_entity_id_dict = dict()
+        # for nb_orig_idx in adj[nd_orig_idx].indices:
+        #     nb_idx = train_ord_map[nb_orig_idx]
+        #     nb_gp_idx = groups[nb_idx]
+        #     # if a node's neighbor and this node are still in the same concated sub-graph
+        #     if multi_parts_map[nb_gp_idx] == map_id:
+        #         relation_times = adj[nd_orig_idx].data[count]
+        #         key = str(nd_orig_idx) + "_" + str(nb_orig_idx)
+        #         new_entity_id_key = str(map_id) + "_" + str(nb_orig_idx)
+        #         if new_entity_id_key in new_entity_id_dict:
+        #             new_entity_id = new_entity_id_dict[new_entity_id_key]
+        #         else:
+        #             new_entity_id = multi_map_idx[map_id]
+        #             new_entity_id_dict[new_entity_id_key] = new_entity_id
+        #             multi_map_idx[map_id] += 1
+        #         for i in range(relation_times):
+        #             # adj_entities.append(nb_orig_idx)
+        #             adj_entities.append(new_entity_id)
+        #             adj_relations.append(kg[key][i])
+        #             times += 1
+        #     count += 1
 
-        # sample adj_value
-        n_neighbors = times
-        if n_neighbors == 0:
-            print("No neighbor, nd_orig_idx: ", nd_orig_idx)
-            adj_entities = [0]
-            adj_relations = [0]
-            n_neighbors = 1
+        # # sample adj_value
+        # n_neighbors = times
+        # if n_neighbors == 0:
+        #     print("No neighbor, nd_orig_idx: ", nd_orig_idx)
+        #     adj_entities = [0]
+        #     adj_relations = [0]
+        #     n_neighbors = 1
 
-        if n_neighbors >= neighbor_sample_size:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
-        else:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
+        # if n_neighbors >= neighbor_sample_size:
+        #     sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
+        # else:
+        #     sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
 
-        multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
-        multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
+        # multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
+        # multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
 
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('train_multi_map_idx:', train_multi_map_idx)
 
     return multi_adj_entities, multi_adj_relations, train_data_multi_map, eval_data_multi_map, test_data_multi_map
+
+
+def sparse_to_tuple(sparse_mx):
+  """Convert sparse matrix to tuple representation."""
+
+  def to_tuple(mx):
+    if not sp.isspmatrix_coo(mx):
+      mx = mx.tocoo()
+    coords = np.vstack((mx.row, mx.col)).transpose()
+    values = mx.data
+    shape = mx.shape
+    return coords, values, shape
+
+  if isinstance(sparse_mx, list):
+    for i in range(len(sparse_mx)):
+      sparse_mx[i] = to_tuple(sparse_mx[i])
+  else:
+    sparse_mx = to_tuple(sparse_mx)
+
+  return sparse_mx
