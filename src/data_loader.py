@@ -109,13 +109,13 @@ def construct_adj_entity(edges, entity_num):
     #     (edges.shape[0]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
     #     shape=(entity_num, entity_num))
     adj_relation = sp.csr_matrix((np.array(
-        (edges[:, 1]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
+        (edges[:, 1]+1), dtype=np.int32), (edges[:, 0], edges[:, 2])),
         shape=(entity_num, entity_num))
     # treat the KG as an undirected graph
     adj_relation += adj_relation.transpose()
 
-    adj_entity = sp.csr_matrix((np.array(
-        (edges[:, 2]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
+    adj_entity = sp.csr_matrix((np.ones(
+        (edges.shape[0]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
         shape=(entity_num, entity_num))
     # treat the KG as an undirected graph
     adj_entity += adj_entity.transpose()

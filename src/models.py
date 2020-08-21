@@ -32,6 +32,7 @@ class Model(object):
         self.l2_weight = args.l2_weight
         self.lr = args.lr
         self.optimizer = None
+        self.aggregators = []
         if args.aggregator == 'sum':
             self.aggregator_class = SumAggregator
         elif args.aggregator == 'concat':
@@ -64,7 +65,7 @@ class Model(object):
         # entities is a list of i-iter (i = 0, 1, ..., n_iter) neighbors for the batch of items
         # dimensions of entities:
         # {[batch_size, 1], [batch_size, n_neighbor], [batch_size, n_neighbor^2], ..., [batch_size, n_neighbor^n_iter]}
-        entities, relations = self.get_neighbors(self.item_indices)
+        # entities, relations = self.get_neighbors(self.item_indices)
 
         # [batch_size, dim]
         self.item_embeddings, self.aggregators = self.aggregate(entities, relations)
@@ -73,20 +74,20 @@ class Model(object):
         self.scores = tf.reduce_sum(self.user_embeddings * self.item_embeddings, axis=1)
         self.scores_normalized = tf.sigmoid(self.scores)
 
-    def get_neighbors(self, seeds):
-        seeds = tf.expand_dims(seeds, axis=1)
-        entities = [seeds]
-        relations = []
-        for i in range(self.n_iter):
-            # neighbor_entities = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_entity, self.entity_emb_matrix),
-            #                               [self.batch_size, -1])
-            # neighbor_relations = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_relation, self.relation_emb_matrix),
-            #                                 [self.batch_size, -1])
-            neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
-            neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
-            entities.append(neighbor_entities)
-            relations.append(neighbor_relations)
-        return entities, relations
+    # def get_neighbors(self, seeds):
+    #     seeds = tf.expand_dims(seeds, axis=1)
+    #     entities = [seeds]
+    #     relations = []
+    #     for i in range(self.n_iter):
+    #         # neighbor_entities = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_entity, self.entity_emb_matrix),
+    #         #                               [self.batch_size, -1])
+    #         # neighbor_relations = tf.reshape(tf.sparse_tensor_dense_matmul(self.adj_relation, self.relation_emb_matrix),
+    #         #                                 [self.batch_size, -1])
+    #         neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
+    #         neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
+    #         entities.append(neighbor_entities)
+    #         relations.append(neighbor_relations)
+    #     return entities, relations
 
     def aggregate(self, entities, relations):
         aggregators = []  # store all aggregators
