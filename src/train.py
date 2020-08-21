@@ -171,7 +171,6 @@ def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_ma
             feed_dict = construct_feed_dict(
                 multi_adj_entities[pid], multi_adj_relations[pid], data, start, start + batch_size, placeholders)
             auc, f1 = model.eval(sess, feed_dict=feed_dict)
-
             auc_list.append(auc)
             f1_list.append(f1)
             start += batch_size

@@ -85,6 +85,8 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
     eval_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
     test_multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
 
+    multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
+    new_entity_id_dict = dict()
 
     for nd_idx in range(num_nodes):
         count = 0
@@ -94,6 +96,12 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         gp_idx = groups[nd_idx]
         nd_orig_idx = idx_nodes[nd_idx]
         map_id = multi_parts_map[gp_idx]
+
+        new_entity_id_key = str(map_id) + "_" + str(nd_orig_idx)
+        if new_entity_id_key not in new_entity_id_dict:
+            new_entity_id = multi_map_idx[map_id]
+            new_entity_id_dict[new_entity_id_key] = new_entity_id
+            multi_map_idx[map_id] += 1
 
         # partition train_data
         train_map_idx = train_multi_map_idx[map_id]
@@ -152,8 +160,7 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                 test_data_multi_map[map_id] = np.concatenate((test_data_multi_map[map_id], temp_list))
             test_multi_map_idx[map_id] += 1
 
-        multi_map_idx = [0 for i in range(math.ceil(num_clusters / block_size))]
-        new_entity_id_dict = dict()
+        # adj
         for nb_orig_idx in adj[nd_orig_idx].indices:
             nb_idx = train_ord_map[nb_orig_idx]
             nb_gp_idx = groups[nb_idx]
