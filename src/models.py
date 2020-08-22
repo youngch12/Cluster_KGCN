@@ -64,7 +64,7 @@ class Model(object):
         # entities is a list of i-iter (i = 0, 1, ..., n_iter) neighbors for the batch of items
         # dimensions of entities:
         # {[batch_size, 1], [batch_size, n_neighbor], [batch_size, n_neighbor^2], ..., [batch_size, n_neighbor^n_iter]}
-        entities, relations = self.get_neighbors(self.item_indices)
+        entities, relations = self.get_neighbors(self.item_indices, self.cluster_item_indices)
 
         # [batch_size, dim]
         self.item_embeddings, self.aggregators = self.aggregate(entities, relations)
@@ -73,15 +73,17 @@ class Model(object):
         self.scores = tf.reduce_sum(self.user_embeddings * self.item_embeddings, axis=1)
         self.scores_normalized = tf.sigmoid(self.scores)
 
-    def get_neighbors(self, seeds):
+    def get_neighbors(self, seeds, cluster_seeds):
         seeds = tf.expand_dims(seeds, axis=1)
-        entities = [seeds]
+        cluster_seeds = tf.expand_dims(cluster_seeds, axis=1)
+        entities = [cluster_seeds]
         relations = []
         for i in range(self.n_iter):
             neighbor_entities = tf.reshape(tf.gather(self.adj_entity, entities[i]), [self.batch_size, -1])
             neighbor_relations = tf.reshape(tf.gather(self.adj_relation, entities[i]), [self.batch_size, -1])
             entities.append(neighbor_entities)
             relations.append(neighbor_relations)
+        entities[0] = seeds
         return entities, relations
 
     def aggregate(self, entities, relations):
@@ -150,6 +152,7 @@ class KGCN(Model):
     self.adj_relation = placeholders['adj_relation']
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
+    self.cluster_item_indices = placeholders['cluster_item_indices']
     self.labels = placeholders['labels']
 
     self.optimizer = tf.train.AdamOptimizer(args.lr)

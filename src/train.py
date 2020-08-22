@@ -41,6 +41,8 @@ def train(args, data, show_loss, show_topk):
             tf.placeholder(tf.int64),
         'item_indices':
             tf.placeholder(tf.int64),
+        'cluster_item_indices':
+            tf.placeholder(tf.int64),
         'labels':
             tf.placeholder(tf.float32)
     }
@@ -155,8 +157,9 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
     feed_dict.update({placeholders['adj_entity']: adj_entity})
     feed_dict.update({placeholders['adj_relation']: adj_relation})
     feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
-    feed_dict.update({placeholders['item_indices']: data[start:end, 3]})
+    feed_dict.update({placeholders['item_indices']: data[start:end, 1]})
     feed_dict.update({placeholders['labels']: data[start:end, 2]})
+    feed_dict.update({placeholders['cluster_item_indices']: data[start:end, 3]})
     return feed_dict
 
 
