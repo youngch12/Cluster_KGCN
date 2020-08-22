@@ -89,10 +89,19 @@ class Model(object):
     #         relations.append(neighbor_relations)
     #     return entities, relations
 
-    def aggregate(self, entities, relations):
+    def aggregate(self, ori_seeds, new_seeds):
+        ori_seeds = tf.expand_dims(ori_seeds, axis=1)
+        ori_entities = [ori_seeds]
+        new_seeds = tf.expand_dims(new_seeds, axis=1)
+        new_entities = [new_seeds]
         aggregators = []  # store all aggregators
-        entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in entities]
-        relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
+
+        entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in ori_entities]
+        neighbor_entities = tf.reshape(tf.gather(self.adj_entity, new_entities), [self.batch_size, -1])
+
+        # neighbor_relations = tf.reshape(tf.gather(self.adj_relation, new_entities), [self.batch_size, -1])
+        #
+        # relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
 
         # entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in item_indices]
         # # relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
@@ -109,7 +118,7 @@ class Model(object):
             entity_vectors_next_iter = []
             for hop in range(self.n_iter - i):
                 shape = [self.batch_size, -1, self.dim]
-                vector = aggregator(self_vectors=entity_vectors[hop],
+                vector = aggregator(self_vectors=entity_vectors,
                                     neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
                                     neighbor_relations=tf.reshape(relation_vectors[hop], shape),
                                     user_embeddings=self.user_embeddings)
