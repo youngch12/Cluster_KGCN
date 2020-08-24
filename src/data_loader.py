@@ -6,13 +6,13 @@ import argparse
 
 def load_data(args):
     n_user, n_item, train_data, eval_data, test_data = load_rating(args)
-    n_entity, n_relation, adj_entity, adj_relation, idx_nodes, kg= load_kg(args)
+    n_entity, n_relation, adj_entity, idx_nodes, kg = load_kg(args)
     train_item_idx_dict, train_item_next_dict = get_item_idx_dict(train_data)
     eval_item_idx_dict, eval_item_next_dict = get_item_idx_dict(eval_data)
     test_item_idx_dict, test_item_next_dict = get_item_idx_dict(test_data)
     print('data loaded.')
 
-    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, adj_relation, idx_nodes, kg, \
+    return n_user, n_item, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, idx_nodes, kg, \
            train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict,\
            train_item_next_dict, eval_item_next_dict, test_item_next_dict
 
@@ -77,9 +77,9 @@ def load_kg(args):
     n_relation = len(set(kg_np[:, 1]))
 
     kg, edges, idx_nodes = construct_kg(kg_np)
-    adj_entity, adj_relation = construct_adj_entity(edges, n_entity)
+    adj_entity = construct_adj_entity(edges, n_entity)
 
-    return n_entity, n_relation, adj_entity, adj_relation, idx_nodes, kg
+    return n_entity, n_relation, adj_entity, idx_nodes, kg  # , adj_relation
 
 
 def construct_kg(kg_np):
@@ -91,9 +91,17 @@ def construct_kg(kg_np):
         head = triple[0]
         relation = triple[1]
         tail = triple[2]
-        key_h_t = str(head) + "_" + str(tail)
-        if key_h_t not in kg:
-            edges.append((head, relation, tail))
+        edges.append((head, relation, tail))
+        # treat the KG as an undirected graph
+        key_a = str(head) + "_" + str(tail)
+        key_b = str(tail) + "_" + str(head)
+        if key_a not in kg:
+            kg[key_a] = []
+        kg[key_a].append(relation)
+        if key_b not in kg:
+            kg[key_b] = []
+        kg[key_b].append(relation)
+
         if head not in idx_nodes:
             idx_nodes.append(head)
         if tail not in idx_nodes:
@@ -105,25 +113,15 @@ def construct_kg(kg_np):
 
 def construct_adj_entity(edges, entity_num):
     print('constructing adjacency entity ...')
-    # adj_entity = sp.csr_matrix((np.ones(
-    #     (edges.shape[0]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
-    #     shape=(entity_num, entity_num))
-    adj_relation = sp.csr_matrix((np.array(
-        (edges[:, 1]+1), dtype=np.int32), (edges[:, 0], edges[:, 2])),
-        shape=(entity_num, entity_num))
-    # treat the KG as an undirected graph
-    adj_relation += adj_relation.transpose()
-
     adj_entity = sp.csr_matrix((np.ones(
         (edges.shape[0]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
         shape=(entity_num, entity_num))
+    # adj_entity = sp.csr_matrix((np.array(
+    #     (edges[:, 1]), dtype=np.int32), (edges[:, 0], edges[:, 2])),
+    #     shape=(entity_num, entity_num))
     # treat the KG as an undirected graph
     adj_entity += adj_entity.transpose()
-
-    print("adj_relation:", adj_relation)
-    print("\n")
-    print("adj_entity:", adj_entity)
-    return adj_entity, adj_relation
+    return adj_entity
 
 
 # order by item

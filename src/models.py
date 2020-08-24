@@ -88,17 +88,17 @@ class Model(object):
     def aggregate(self, entities, relations):
         aggregators = []  # store all aggregators
 
-        entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in entities[0]]
-        neighbor_entities = tf.reshape(tf.gather(self.adj_entity, new_entities), [self.batch_size, -1])
+        entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, entities[0])]
+        neighbors_entities_val = []
+        neighbors_relations_val = []
 
-        # neighbor_relations = tf.reshape(tf.gather(self.adj_relation, new_entities), [self.batch_size, -1])
-        #
-        # relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
+        neighbors_entities_val.append(tf.nn.embedding_lookup(self.entity_emb_matrix, self.entities_indices))
+        neighbors_relations_val.append(tf.nn.embedding_lookup(self.relation_emb_matrix, self.entities_indices))
 
-        # entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, i) for i in item_indices]
-        # # relation_vectors = [tf.nn.embedding_lookup(self.relation_emb_matrix, i) for i in relations]
-        # relation_vectors = tf.sparse_tensor_dense_matmul(adj_relation, self.relation_emb_matrix)
-        # neighbor_vectors = tf.sparse_tensor_dense_matmul(adj_entity, self.entity_emb_matri)
+        neighbor_vectors = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_entities_val,
+                                                  dense_shape=[self.batch_size, self.adj_entity.shape.as_list()[0]])
+        neighbor_relations = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_relations_val,
+                                                    dense_shape=[self.batch_size, self.adj_entity.shape.as_list()[0]])
 
         for i in range(self.n_iter):
             if i == self.n_iter - 1:
@@ -111,8 +111,8 @@ class Model(object):
             for hop in range(self.n_iter - i):
                 shape = [self.batch_size, -1, self.dim]
                 vector = aggregator(self_vectors=entity_vectors,
-                                    neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
-                                    neighbor_relations=tf.reshape(relation_vectors[hop], shape),
+                                    neighbor_vectors=neighbor_vectors,
+                                    neighbor_relations=neighbor_relations,
                                     user_embeddings=self.user_embeddings)
                 entity_vectors_next_iter.append(vector)
             entity_vectors = entity_vectors_next_iter
@@ -161,7 +161,10 @@ class KGCN(Model):
     self.adj_relation = placeholders['adj_relation']
     self.user_indices = placeholders['user_indices']
     self.item_indices = placeholders['item_indices']
+    self.cluster_item_indices = placeholders['cluster_item_indices']
     self.labels = placeholders['labels']
+    self.neighbors_indices = placeholders['neighbors_indices']
+    self.entities_indices = placeholders['entities_indices']
 
     self.optimizer = tf.train.AdamOptimizer(args.lr)
     self.placeholders = placeholders

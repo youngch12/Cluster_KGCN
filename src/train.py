@@ -12,9 +12,9 @@ from tensorflow.python.profiler import option_builder
 def train(args, data, show_loss, show_topk):
     n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
     train_data, eval_data, test_data = data[4], data[5], data[6]
-    adj_entity, adj_relation, idx_nodes, kg = data[7], data[8], data[9], data[10]
-    train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict = data[11], data[12], data[13]
-    train_item_next_dict, eval_item_next_dict, test_item_next_dict = data[14], data[15], data[16]
+    adj_entity, idx_nodes, kg = data[7], data[8], data[9]
+    train_item_idx_dict, eval_item_idx_dict, test_item_idx_dict =data[10], data[11], data[12]
+    train_item_next_dict, eval_item_next_dict, test_item_next_dict = data[13], data[14], data[15]
 
     groups, train_ord_map = partition_utils.partition_graph(adj_entity, idx_nodes, args.num_clusters)
 
@@ -41,8 +41,14 @@ def train(args, data, show_loss, show_topk):
             tf.placeholder(tf.int64),
         'item_indices':
             tf.placeholder(tf.int64),
+        'cluster_item_indices':
+            tf.placeholder(tf.int64),
         'labels':
-            tf.placeholder(tf.float32)
+            tf.placeholder(tf.float32),
+        'neighbors_indices':
+            tf.placeholder(tf.int64),
+        'entities_indices':
+            tf.placeholder(tf.int64)
     }
 
     # Create model
@@ -155,8 +161,21 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
     feed_dict.update({placeholders['adj_entity']: adj_entity})
     feed_dict.update({placeholders['adj_relation']: adj_relation})
     feed_dict.update({placeholders['user_indices']: data[start:end, 0]})
-    feed_dict.update({placeholders['item_indices']: data[start:end, 3]})
+    feed_dict.update({placeholders['item_indices']: data[start:end, 1]})
     feed_dict.update({placeholders['labels']: data[start:end, 2]})
+    feed_dict.update({placeholders['cluster_item_indices']: data[start:end, 3]})
+
+    neighbors_indices = []
+    entities_indices = []
+    for i in data[start:end, 1]:
+        indices = adj_entity[i]
+        for idx in range(len(indices)):
+            neighbors_indices.append([i, indices[idx]])
+            entities_indices.append(indices[idx])
+
+    feed_dict.update({placeholders['neighbors_indices']: neighbors_indices})
+    feed_dict.update({placeholders['entities_indices']: entities_indices})
+    feed_dict.update({placeholders['n_adj_entity']: entities_indices})
     return feed_dict
 
 

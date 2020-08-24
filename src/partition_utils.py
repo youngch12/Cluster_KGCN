@@ -156,7 +156,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                 test_data_multi_map[map_id] = np.concatenate((test_data_multi_map[map_id], temp_list))
             test_multi_map_idx[map_id] += 1
 
-
         for nb_orig_idx in adj[nd_orig_idx].indices:
             nb_idx = train_ord_map[nb_orig_idx]
             nb_gp_idx = groups[nb_idx]

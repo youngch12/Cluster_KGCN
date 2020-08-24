@@ -45,16 +45,29 @@ class Aggregator(object):
             # [batch_size, 1, 1, dim]
             user_embeddings = tf.reshape(user_embeddings, [self.batch_size, 1, 1, self.dim])
 
-            # [batch_size, -1, n_neighbor]
-            user_relation_scores = tf.reduce_mean(user_embeddings * neighbor_relations, axis=-1)
-            # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
+
+            # TODO
+            user_relation_scores = tf.reduce_mean(tf.sparse_tensor_dense_matmul(neighbor_relations, user_embeddings), axis=-1)
             user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, axis=-1)
 
             # [batch_size, -1, n_neighbor, 1]
             user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
 
             # [batch_size, -1, dim]
-            neighbors_aggregated = tf.reduce_mean(user_relation_scores_normalized * neighbor_vectors, axis=2)
+            neighbors_aggregated = tf.reduce_mean(tf.sparse_tensor_dense_matmul(neighbor_vectors, user_relation_scores_normalized), axis=2)
+            # TODO
+
+
+            # # [batch_size, -1, n_neighbor]
+            # user_relation_scores = tf.reduce_mean(user_embeddings * neighbor_relations, axis=-1)
+            # # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
+            # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, axis=-1)
+            #
+            # # [batch_size, -1, n_neighbor, 1]
+            # user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
+            #
+            # # [batch_size, -1, dim]
+            # neighbors_aggregated = tf.reduce_mean(user_relation_scores_normalized * neighbor_vectors, axis=2)
         else:
             # [batch_size, -1, dim]
             neighbors_aggregated = tf.reduce_mean(neighbor_vectors, axis=2)
