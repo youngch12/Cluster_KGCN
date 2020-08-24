@@ -190,8 +190,8 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
         # else:
         #     sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
 
-        multi_adj_entities[map_id].append(np.array(adj_entities[i]))
-        multi_adj_relations[map_id].append(np.array(adj_relations[i]))
+        multi_adj_entities[map_id].append(np.array(adj_entities))
+        multi_adj_relations[map_id].append(np.array(adj_relations))
 
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('train_multi_map_idx:', train_multi_map_idx)

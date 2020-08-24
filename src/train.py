@@ -168,14 +168,16 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
     neighbors_indices = []
     entities_indices = []
     for i in data[start:end, 1]:
-        indices = adj_entity[i]
+        indices = np.array(adj_entity[i])
+        # print("indices:", indices)
+        print("indices.shape:", indices.shape)
         for idx in range(len(indices)):
             neighbors_indices.append([i, indices[idx]])
             entities_indices.append(indices[idx])
 
+    print("neighbors_indices:", neighbors_indices)
     feed_dict.update({placeholders['neighbors_indices']: neighbors_indices})
     feed_dict.update({placeholders['entities_indices']: entities_indices})
-    feed_dict.update({placeholders['n_adj_entity']: entities_indices})
     return feed_dict
 
 

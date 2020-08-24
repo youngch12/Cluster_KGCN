@@ -55,6 +55,7 @@ class Aggregator(object):
             # [batch_size, -1, n_neighbor, 1]
             user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
             print("user_relation_scores_normalized.shape:", user_relation_scores_normalized.shape)
+
             # [batch_size, -1, dim]
             neighbors_aggregated = tf.reduce_mean(tf.sparse_tensor_dense_matmul(neighbor_vectors, user_relation_scores_normalized), axis=1)
             print("neighbors_aggregated.shape:", neighbors_aggregated.shape)
@@ -127,7 +128,7 @@ class ConcatAggregator(Aggregator):
         output = tf.matmul(output, self.weights) + self.bias
         print("matmul output.shape:", output.shape)
         # [batch_size, -1, dim]
-        output = tf.reshape(output, [self.batch_size, self.dim])
+        output = tf.reshape(output, [self.batch_size, -1, self.dim])
         print("reshape output.shape:", output.shape)
         return self.act(output)
 

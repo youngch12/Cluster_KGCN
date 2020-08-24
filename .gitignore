@@ -101,3 +101,5 @@ data/music/*
 !data/music/item_index2entity_id.txt
 !data/music/kg.txt
 !data/music/user_artists.dat
+/data/movie-20m/kg_final.txt
+/data/movie-20m/ratings_final.txt
