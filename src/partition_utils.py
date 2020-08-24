@@ -103,6 +103,41 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
             new_entity_id_dict[new_entity_id_key] = new_entity_id
             multi_map_idx[map_id] += 1
 
+        # adj
+        for nb_orig_idx in adj[nd_orig_idx].indices:
+            nb_idx = train_ord_map[nb_orig_idx]
+            nb_gp_idx = groups[nb_idx]
+            # if a node's neighbor and this node are still in the same concated sub-graph
+            if multi_parts_map[nb_gp_idx] == map_id:
+                relation_times = adj[nd_orig_idx].data[count]
+                key = str(nd_orig_idx) + "_" + str(nb_orig_idx)
+                new_entity_id_key = str(map_id) + "_" + str(nb_orig_idx)
+                if new_entity_id_key in new_entity_id_dict:
+                    new_entity_id = new_entity_id_dict[new_entity_id_key]
+                else:
+                    new_entity_id = multi_map_idx[map_id]
+                    new_entity_id_dict[new_entity_id_key] = new_entity_id
+                    multi_map_idx[map_id] += 1
+                for i in range(relation_times):
+                    # adj_entities.append(nb_orig_idx)
+                    adj_entities.append(new_entity_id)
+                    adj_relations.append(kg[key][i])
+                    times += 1
+            count += 1
+
+        # sample adj_value
+        n_neighbors = times
+        if n_neighbors == 0:
+            continue
+
+        if n_neighbors >= neighbor_sample_size:
+            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
+        else:
+            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
+
+        multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
+        multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
+
         # partition train_data
         train_map_idx = train_multi_map_idx[map_id]
         if nd_orig_idx in train_item_idx_dict:
@@ -160,43 +195,6 @@ def preprocess_multicluster(adj, kg, idx_nodes, groups, train_ord_map,
                 test_data_multi_map[map_id] = np.concatenate((test_data_multi_map[map_id], temp_list))
             test_multi_map_idx[map_id] += 1
 
-        # adj
-        for nb_orig_idx in adj[nd_orig_idx].indices:
-            nb_idx = train_ord_map[nb_orig_idx]
-            nb_gp_idx = groups[nb_idx]
-            # if a node's neighbor and this node are still in the same concated sub-graph
-            if multi_parts_map[nb_gp_idx] == map_id:
-                relation_times = adj[nd_orig_idx].data[count]
-                key = str(nd_orig_idx) + "_" + str(nb_orig_idx)
-                new_entity_id_key = str(map_id) + "_" + str(nb_orig_idx)
-                if new_entity_id_key in new_entity_id_dict:
-                    new_entity_id = new_entity_id_dict[new_entity_id_key]
-                else:
-                    new_entity_id = multi_map_idx[map_id]
-                    new_entity_id_dict[new_entity_id_key] = new_entity_id
-                    multi_map_idx[map_id] += 1
-                for i in range(relation_times):
-                    # adj_entities.append(nb_orig_idx)
-                    adj_entities.append(new_entity_id)
-                    adj_relations.append(kg[key][i])
-                    times += 1
-            count += 1
-
-        # sample adj_value
-        n_neighbors = times
-        if n_neighbors == 0:
-            print("No neighbor, nd_orig_idx: ", nd_orig_idx)
-            adj_entities = [0]
-            adj_relations = [0]
-            n_neighbors = 1
-
-        if n_neighbors >= neighbor_sample_size:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=False)
-        else:
-            sampled_indices = np.random.choice(list(range(n_neighbors)), size=neighbor_sample_size, replace=True)
-
-        multi_adj_entities[map_id].append(np.array([adj_entities[i] for i in sampled_indices]))
-        multi_adj_relations[map_id].append(np.array([adj_relations[i] for i in sampled_indices]))
 
     print('Preprocessing multi-cluster done. %f seconds.', time.time() - start_time)
     print('train_multi_map_idx:', train_multi_map_idx)
