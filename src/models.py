@@ -95,10 +95,13 @@ class Model(object):
         neighbors_entities_val.append(tf.nn.embedding_lookup(self.entity_emb_matrix, self.entities_indices))
         neighbors_relations_val.append(tf.nn.embedding_lookup(self.relation_emb_matrix, self.entities_indices))
 
+        n_adj_entities = tf.cast(tf.shape(self.adj_entity)[0], tf.int32)
+
         neighbor_vectors = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_entities_val,
-                                                  dense_shape=[self.batch_size, self.adj_entity.shape.as_list()[0]])
+                                                  dense_shape=[self.batch_size, n_adj_entities])
+        # self.adj_entity.shape.as_list()[0]
         neighbor_relations = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_relations_val,
-                                                    dense_shape=[self.batch_size, self.adj_entity.shape.as_list()[0]])
+                                                    dense_shape=[self.batch_size, n_adj_entities])
 
         for i in range(self.n_iter):
             if i == self.n_iter - 1:

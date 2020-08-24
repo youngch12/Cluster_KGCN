@@ -34,7 +34,7 @@ def train(args, data, show_loss, show_topk):
     # Define placeholders
     placeholders = {
         'adj_entity':
-            tf.placeholder(tf.int64),
+            tf.placeholder(tf.int64, shape=[args.batch_size, None]),
         'adj_relation':
             tf.placeholder(tf.int64),
         'user_indices':
