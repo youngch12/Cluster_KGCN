@@ -48,6 +48,8 @@ def train(args, data, show_loss, show_topk):
         'neighbors_indices':
             tf.placeholder(tf.int64),
         'entities_indices':
+            tf.placeholder(tf.int64),
+        'relations_indices':
             tf.placeholder(tf.int64)
     }
 
@@ -167,17 +169,23 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
 
     neighbors_indices = []
     entities_indices = []
-    for i in data[start:end, 1]:
-        indices = np.array(adj_entity[i])
+    relations_indices = []
+    for i in range(len(data[start:end, 1])):
+        item_idx = data[start:end, 1][i]
+        entity_indices = np.array(adj_entity[item_idx])
+        relation_indices = np.array(adj_relation[item_idx])
         # print("indices:", indices)
-        print("indices.shape:", indices.shape)
-        for idx in range(len(indices)):
-            neighbors_indices.append([i, indices[idx]])
-            entities_indices.append(indices[idx])
+        # print("indices.shape:", indices.shape)
+        for idx in range(len(entity_indices)):
+            neighbors_indices.append([i, entity_indices[idx]])
+            entities_indices.append(entity_indices[idx])
+            relations_indices.append(relation_indices[idx])
 
     print("neighbors_indices:", neighbors_indices)
     feed_dict.update({placeholders['neighbors_indices']: neighbors_indices})
     feed_dict.update({placeholders['entities_indices']: entities_indices})
+    feed_dict.update({placeholders['relations_indices']: relations_indices})
+
     return feed_dict
 
 
