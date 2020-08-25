@@ -93,8 +93,8 @@ class Model(object):
         neighbors_entities_val = []
         neighbors_relations_val = []
 
-        neighbors_entities_val = [tf.nn.embedding_lookup(self.entity_emb_matrix, self.entities_indices)]
-        neighbors_relations_val = [tf.nn.embedding_lookup(self.relation_emb_matrix, self.relations_indices)]
+        neighbors_entities_val = tf.nn.embedding_lookup(self.entity_emb_matrix, self.entities_indices)
+        neighbors_relations_val = tf.nn.embedding_lookup(self.relation_emb_matrix, self.relations_indices)
 
         n_adj_entities = tf.cast(tf.shape(self.adj_entity)[0], tf.int32)
 
@@ -105,18 +105,19 @@ class Model(object):
                                               [self.batch_size, n_adj_entities],
                                               neighbors_entities_val,
                                               # default_value=np.zeros(self.dim),
-                                              default_value=tf.get_variable(shape=[1, self.dim],
-                                                                            initializer=tf.zeros_initializer(),
-                                                                            name='default_value1'),
+                                              # default_value=tf.get_variable(shape=[1, self.dim],
+                                              #                               initializer=tf.zeros_initializer(),
+                                              #                               name='default_value1'),
                                               validate_indices=True, name='neighbor_vectors')
         print("neighbor_vectors:", neighbor_vectors)
         neighbor_relations = tf.sparse_to_dense(self.neighbors_indices,
                                                 [self.batch_size, n_adj_entities],
                                                 neighbors_relations_val,
-                                                # default_value=np.zeros(self.dim),
-                                                default_value=tf.get_variable(shape=[1, self.dim],
-                                                                              initializer=tf.zeros_initializer(),
-                                                                              name='default_value2'),
+                                                default_value=np.zeros(self.dim),
+                                                # default_value=np.zeros([1, self.dim]),
+                                                # default_value=tf.get_variable(shape=[1, self.dim],
+                                                #                               initializer=tf.zeros_initializer(),
+                                                #                               name='default_value2'),
                                                 validate_indices=True, name='neighbor_relations')
         # neighbor_relations = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_relations_val,
         #                                             dense_shape=[self.batch_size, n_adj_entities])
