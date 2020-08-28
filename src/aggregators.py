@@ -43,18 +43,22 @@ class Aggregator(object):
         avg = False
         if not avg:
             # [batch_size, 1, 1, dim]
-            user_embeddings = tf.reshape(user_embeddings, [self.batch_size, 1, 1, self.dim])
+            user_embeddings = tf.reshape(user_embeddings, [self.batch_size, self.dim])
 
             # [batch_size, -1, n_neighbor]
-            user_relation_scores = tf.reduce_mean(user_embeddings * neighbor_relations, axis=-1)
-            # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
-            user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, axis=-1)
-
-            # [batch_size, -1, n_neighbor, 1]
-            user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
+            res_nr_ue = tf.sparse_tensor_dense_matmul(neighbor_relations, user_embeddings)
+            user_relation_scores_normalized = res_nr_ue
+            # user_relation_scores = tf.reduce_mean(res_nr_ue, axis=0)
+            # # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, dim=-1)
+            # user_relation_scores_normalized = tf.nn.softmax(user_relation_scores, axis=0)
+            #
+            # # [batch_size, -1, n_neighbor, 1]
+            # user_relation_scores_normalized = tf.expand_dims(user_relation_scores_normalized, axis=-1)
 
             # [batch_size, -1, dim]
-            neighbors_aggregated = tf.reduce_mean(user_relation_scores_normalized * neighbor_vectors, axis=2)
+            res_nv_ur = tf.sparse_tensor_dense_matmul(neighbor_vectors, user_relation_scores_normalized)
+            neighbors_aggregated = res_nv_ur
+            # neighbors_aggregated = tf.reduce_mean(res_nv_ur)
         else:
             # [batch_size, -1, dim]
             neighbors_aggregated = tf.reduce_mean(neighbor_vectors, axis=2)
@@ -100,7 +104,7 @@ class ConcatAggregator(Aggregator):
         neighbors_agg = self._mix_neighbor_vectors(neighbor_vectors, neighbor_relations, user_embeddings)
 
         # [batch_size, -1, dim * 2]
-        output = tf.concat([self_vectors, neighbors_agg], axis=-1)
+        output = tf.concat([neighbors_agg, self_vectors], axis=-1)
 
         # [-1, dim * 2]
         output = tf.reshape(output, [-1, self.dim * 2])

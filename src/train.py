@@ -182,6 +182,8 @@ def construct_feed_dict(adj_entity, adj_relation, data, start, end, placeholders
             relations_indices.append(relation_indices[idx])
 
     print("neighbors_indices:", neighbors_indices)
+    print("entities_indices:", entities_indices)
+    print("relations_indices:", relations_indices)
     feed_dict.update({placeholders['neighbors_indices']: neighbors_indices})
     feed_dict.update({placeholders['entities_indices']: entities_indices})
     feed_dict.update({placeholders['relations_indices']: relations_indices})
