@@ -58,7 +58,7 @@ class Model(object):
         self.relation_emb_matrix = tf.get_variable(
             shape=[self.n_relation, self.dim], initializer=KGCN.get_initializer(), name='relation_emb_matrix')
         self.entity_emb_matrix = tf.get_variable(
-            shape=[self.n_entity, self.dim], initializer=tf.glorot_uniform_initializer(), name='entity_emb_matrix')
+            shape=[self.n_entity, self.dim], initializer=KGCN.get_initializer(), name='entity_emb_matrix')
 
         # [batch_size, dim]
         self.user_embeddings = tf.nn.embedding_lookup(self.user_emb_matrix, self.user_indices)
@@ -89,39 +89,39 @@ class Model(object):
     def aggregate(self, entities, relations):
         aggregators = []  # store all aggregators
 
-        entity_vectors = [tf.nn.embedding_lookup(self.entity_emb_matrix, entities[0])]
-        neighbors_entities_val = []
-        neighbors_relations_val = []
+        entity_vectors = tf.nn.embedding_lookup(self.entity_emb_matrix, entities[0])
 
         neighbors_entities_val = tf.nn.embedding_lookup(self.entity_emb_matrix, self.entities_indices)
         neighbors_relations_val = tf.nn.embedding_lookup(self.relation_emb_matrix, self.relations_indices)
 
         n_adj_entities = tf.cast(tf.shape(self.adj_entity)[0], tf.int32)
 
-        neighbor_vectors = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_entities_val,
-                                                  dense_shape=[self.batch_size, n_adj_entities])
+        # neighbor_vectors = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_entities_val,
+        #                                           dense_shape=[self.batch_size, n_adj_entities])
+        #
+        # neighbor_relations = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_relations_val,
+        #                                             dense_shape=[self.batch_size, n_adj_entities])
 
-        neighbor_relations = tf.sparse.SparseTensor(indices=self.neighbors_indices, values=neighbors_relations_val,
-                                                    dense_shape=[self.batch_size, n_adj_entities])
+        neighbor_vectors = tf.sparse_to_dense(self.neighbors_indices,
+                                              [self.batch_size, n_adj_entities],
+                                              neighbors_entities_val,
+                                              # default_value=np.zeros(self.dim),
+                                              # default_value=tf.get_variable(shape=[1, self.dim],
+                                              #                               initializer=tf.zeros_initializer(),
+                                              #                               name='default_value1'),
+                                              validate_indices=True, name='neighbor_vectors')
+        print("neighbor_vectors:", neighbor_vectors)
+        print("neighbors_relations_val:", neighbors_relations_val)
 
-        # neighbor_vectors = tf.sparse_to_dense(self.neighbors_indices,
-        #                                       [self.batch_size, n_adj_entities],
-        #                                       neighbors_entities_val,
-        #                                       # default_value=np.zeros(self.dim),
-        #                                       # default_value=tf.get_variable(shape=[1, self.dim],
-        #                                       #                               initializer=tf.zeros_initializer(),
-        #                                       #                               name='default_value1'),
-        #                                       validate_indices=True, name='neighbor_vectors')
-        # print("neighbor_vectors:", neighbor_vectors)
-        # neighbor_relations = tf.sparse_to_dense(self.neighbors_indices,
-        #                                         [self.batch_size, n_adj_entities],
-        #                                         neighbors_relations_val,
-        #                                         default_value=np.zeros(self.dim),
-        #                                         # default_value=np.zeros([1, self.dim]),
-        #                                         # default_value=tf.get_variable(shape=[1, self.dim],
-        #                                         #                               initializer=tf.zeros_initializer(),
-        #                                         #                               name='default_value2'),
-        #                                         validate_indices=True, name='neighbor_relations')
+        neighbor_relations = tf.sparse_to_dense(self.neighbors_indices,
+                                                [self.batch_size, n_adj_entities],
+                                                neighbors_relations_val,
+                                                # default_value=np.zeros(self.dim),
+                                                # default_value=np.zeros([1, self.dim]),
+                                                # default_value=tf.get_variable(shape=[1, self.dim],
+                                                #                               initializer=tf.zeros_initializer(),
+                                                #                               name='default_value2'),
+                                                validate_indices=True, name='neighbor_relations')
 
 
         for i in range(self.n_iter):
@@ -135,11 +135,11 @@ class Model(object):
             for hop in range(self.n_iter - i):
                 shape = [self.batch_size, -1, n_adj_entities, self.dim]
                 vector = aggregator(self_vectors=entity_vectors,
-                                    neighbor_vectors=neighbor_vectors,
-                                    neighbor_relations=neighbor_relations,
+                                    neighbor_vectors=tf.reshape(neighbor_vectors, shape),
+                                    neighbor_relations=tf.reshape(neighbor_relations, shape),
                                     user_embeddings=self.user_embeddings)
                 entity_vectors_next_iter.append(vector)
-            entity_vectors = entity_vectors_next_iter[-1]
+            entity_vectors = entity_vectors_next_iter
 
         res = tf.reshape(entity_vectors[0], [self.batch_size, self.dim])
 
