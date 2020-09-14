@@ -2,6 +2,7 @@
 from aggregators import SumAggregator, ConcatAggregator, NeighborAggregator
 from sklearn.metrics import f1_score, roc_auc_score
 import tensorflow.compat.v1 as tf
+import math
 tf.disable_v2_behavior()
 
 
@@ -101,9 +102,11 @@ class Model(object):
             entity_vectors_next_iter = []
             for hop in range(self.n_iter - i):
                 shape = [self.batch_size, -1, self.n_neighbor, self.dim]
+                d = math.pow(0.7, hop)
                 vector = aggregator(self_vectors=entity_vectors[hop],
                                     neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
                                     neighbor_relations=tf.reshape(relation_vectors[hop], shape),
+                                    # neighbor_relations=tf.reshape(relation_vectors[hop] * d, shape),
                                     user_embeddings=self.user_embeddings)
                 entity_vectors_next_iter.append(vector)
             entity_vectors = entity_vectors_next_iter
@@ -124,11 +127,11 @@ class Model(object):
 
         self.opt_op = self.optimizer.minimize(self.loss)
 
-    def train(self, sess, feed_dict, run_options, run_metadata):
-        return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=run_metadata)
+    # def train(self, sess, feed_dict, run_options, run_metadata):
+    #     return sess.run([self.opt_op, self.loss], feed_dict, options=run_options, run_metadata=run_metadata)
 
-    # def train(self, sess, feed_dict):
-    #     return sess.run([self.opt_op, self.loss], feed_dict)
+    def train(self, sess, feed_dict):
+        return sess.run([self.opt_op, self.loss], feed_dict)
 
     def eval(self, sess, feed_dict):
         labels, scores = sess.run([self.labels, self.scores_normalized], feed_dict)

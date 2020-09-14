@@ -132,6 +132,7 @@ def sort_data(data):
 def get_item_idx_dict(data):
     item_idx_dict = dict()
     item_next_dict = dict()
+    temp_dict = dict()
     temp = data[:, 1]
     former_idx = -1
 
@@ -140,9 +141,10 @@ def get_item_idx_dict(data):
             item_idx_dict[temp[i]] = i
             item_next_dict[former_idx] = temp[i]
             former_idx = temp[i]
+            temp_str = ""
 
     # print("item_idx_dict\n:", item_idx_dict)
-    # print("item_nexx_dcit\n:", item_nexx_dcit)
+    # print("item_next_dict\n:", item_next_dict)
     return item_idx_dict, item_next_dict
 
 
@@ -158,10 +160,13 @@ def get_item_idx_dict(data):
 #     data = load_data(args)
 #     train_data, eval_data, test_data = data[4], data[5], data[6]
 #
-#     print("!!!!get_item_idx_dict(train_data):")
-#     get_item_idx_dict(train_data)
-#     print("!!!!get_item_idx_dict(test_data):")
-#     get_item_idx_dict(test_data)
+#     # print("!!!!get_item_idx_dict(train_data):")
+#     # get_item_idx_dict(train_data)
+#     # # print("!!!!get_item_idx_dict(test_data):")
+#     # # get_item_idx_dict(test_data)
+#     # print("user-item data:")
+#     # print("user_id item_id rate:\n", eval_data)
+#
 #     print("!!!! get_item_idx_dict(eval_data):")
 #     get_item_idx_dict(eval_data)
 #

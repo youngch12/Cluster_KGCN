@@ -58,9 +58,9 @@ def train(args, data, show_loss, show_topk):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         # monitor the usage of memory while training the model
-        profiler = model_analyzer.Profiler(graph=sess.graph)
-        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
+        # profiler = model_analyzer.Profiler(graph=sess.graph)
+        # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        # run_metadata = tf.RunMetadata()
         # tensor-board
         # writer = tf.summary.FileWriter('../data/' + args.dataset + '/logs', tf.get_default_graph())
 
@@ -78,10 +78,10 @@ def train(args, data, show_loss, show_topk):
                     feed_dict = construct_feed_dict(multi_adj_entities[pid], multi_adj_relations[pid], train_data,
                                                     start, start + args.batch_size, placeholders)
 
-                    # _, loss = model.train(sess, feed_dict)
-                    _, loss = model.train(sess, feed_dict, run_options, run_metadata)
-                    # # 将本步搜集的统计数据添加到tfprofiler实例中
-                    profiler.add_step(step=step, run_meta=run_metadata)
+                    _, loss = model.train(sess, feed_dict)
+                    # _, loss = model.train(sess, feed_dict, run_options, run_metadata)
+                    # # # 将本步搜集的统计数据添加到tfprofiler实例中
+                    # profiler.add_step(step=step, run_meta=run_metadata)
                     # if i == 0:
                     #     writer.add_run_metadata(run_metadata, 'step %d' % step)
                     # i += 1
@@ -101,29 +101,29 @@ def train(args, data, show_loss, show_topk):
                 'epoch %d   training time: %.5f   train auc: %.4f  f1: %.4f    eval auc: %.4f  f1: %.4f    test auc: %.4f  f1: %.4f'
                 % (step, train_time, train_auc, train_f1, eval_auc, eval_f1, test_auc, test_f1))
 
-        # # 统计模型的memory使用大小
-        profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
-            option_builder.ProfileOptionBuilder.trainable_variables_parameter())
-        # 显示字段是params，即参数
-        profile_scope_opt_builder.select(['params'])
-        # 根据params数量进行显示结果排序
-        profile_scope_opt_builder.order_by('params')
-        # 显示视图为scope view
-        profiler.profile_name_scope(profile_scope_opt_builder.build())
-
-        # ------------------------------------
-        # 最耗时top 5 ops
-        profile_op_opt_builder = option_builder.ProfileOptionBuilder()
-
-        # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
-        profile_op_opt_builder.select(['micros', 'occurrence'])
-        # 根据op执行时间进行显示结果排序
-        profile_op_opt_builder.order_by('micros')
-        # 过滤条件：只显示排名top 5
-        profile_op_opt_builder.with_max_depth(6)
-
-        # 显示视图为op view
-        profiler.profile_operations(profile_op_opt_builder.build())
+        # # # 统计模型的memory使用大小
+        # profile_scope_opt_builder = option_builder.ProfileOptionBuilder(
+        #     option_builder.ProfileOptionBuilder.trainable_variables_parameter())
+        # # 显示字段是params，即参数
+        # profile_scope_opt_builder.select(['params'])
+        # # 根据params数量进行显示结果排序
+        # profile_scope_opt_builder.order_by('params')
+        # # 显示视图为scope view
+        # profiler.profile_name_scope(profile_scope_opt_builder.build())
+        #
+        # # ------------------------------------
+        # # 最耗时top 5 ops
+        # profile_op_opt_builder = option_builder.ProfileOptionBuilder()
+        #
+        # # 显示字段：op执行时间，使用该op的node的数量。 注意：op的执行时间即所有使用该op的node的执行时间总和。
+        # profile_op_opt_builder.select(['micros', 'occurrence'])
+        # # 根据op执行时间进行显示结果排序
+        # profile_op_opt_builder.order_by('micros')
+        # # 过滤条件：只显示排名top 5
+        # profile_op_opt_builder.with_max_depth(6)
+        #
+        # # 显示视图为op view
+        # profiler.profile_operations(profile_op_opt_builder.build())
 
         # ------------------------------------
         # writer.close()
@@ -174,9 +174,16 @@ def ctr_eval(sess, model, multi_adj_entities, multi_adj_relations, data_multi_ma
             feed_dict = construct_feed_dict(
                 multi_adj_entities[pid], multi_adj_relations[pid], data, start, start + batch_size, placeholders)
             auc, f1 = model.eval(sess, feed_dict=feed_dict)
+            if auc == 'nan' or f1 == 'nan' or auc == 'NAN' or f1 == 'NAN' or auc == [] or f1 == []:
+                continue
             auc_list.append(auc)
             f1_list.append(f1)
             start += batch_size
+
+    if auc_list == []:
+        auc_list = [0]
+    if f1_list == []:
+        f1_list = [0]
     return float(np.mean(auc_list)), float(np.mean(f1_list))
 
 
