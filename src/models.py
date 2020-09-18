@@ -102,7 +102,8 @@ class Model(object):
             entity_vectors_next_iter = []
             for hop in range(self.n_iter - i):
                 shape = [self.batch_size, -1, self.n_neighbor, self.dim]
-                d = math.pow(0.7, hop)
+                # decay the relation weight as layer goes deeper
+                d = math.pow(0.9, hop)
                 vector = aggregator(self_vectors=entity_vectors[hop],
                                     neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),
                                     neighbor_relations=tf.reshape(relation_vectors[hop], shape),
