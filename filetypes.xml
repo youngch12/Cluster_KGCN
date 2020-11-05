@@ -10,6 +10,7 @@
       <mapping ext="npy" type="PLAIN_TEXT" />
       <mapping pattern="LogMining100" type="Python" />
       <mapping pattern="test_cashpoint" type="Python" />
+      <mapping pattern="test" type="Python" />
       <mapping pattern="SimpleCashpoint" type="Python" />
     </extensionMap>
   </component>
